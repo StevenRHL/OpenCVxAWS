@@ -1,19 +1,59 @@
+# --- credentials -------------------------------------------------------------
+# Nothing in this project needs a secret to run; these patterns exist so that an
+# accidentally created one is never committed.
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.keystore
+credentials.json
+client_secret*.json
+service-account*.json
+secrets.json
+secrets.toml
+.streamlit/secrets.toml
+
+# --- environments and caches -------------------------------------------------
 .venv/
-.claude/
+venv/
 __pycache__/
+*.py[cod]
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+.claude/
+.runtime/
+*.log
+
+# --- operating system and editors --------------------------------------------
 .DS_Store
+._*
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# --- data, models and results ------------------------------------------------
+# Source footage and derived features are large, licence-restricted, or both, and
+# are rebuilt by scripts/ from the recorded manifests rather than published here.
 data/raw/
 data/processed/
 third_party/
 models/*.task
 outputs/
 runs/
-*.log
-.runtime/
 
-# Internal working notes and planning docs — kept locally, not published.
-# README.md is the one exception so the repo page isn't blank.
+# Saved copies of third-party web pages kept for download provenance. These embed
+# the host site's own client-side configuration, which secret scanners flag, so new
+# captures stay local. Files already tracked here are unaffected by this rule.
+data/metadata/*.html
+data/metadata/*.js
+
+# --- working notes -----------------------------------------------------------
+# Planning, status and handoff documents are internal and kept on the machine.
+# README.md is the one exception, so the repository page is not blank.
 *.md
 !README.md
 docs/

@@ -43,6 +43,9 @@ these limits explicitly. No new legal clearance is claimed.
 
 ## Remaining work
 
+A model comparison on 11 September 2026 produced two challengers. Neither was installed,
+and the reasons are recorded below under "Why the new models were not installed".
+
 Full browser upload/review/decision/cancel/restart/seek/export validation and clean setup
 remain open. Representative camera footage and new held-out evaluation are needed before
 further model claims. Own-camera preparation/capture scripts exist, but no own-camera
@@ -51,6 +54,54 @@ corpus is present. The app accepts files; live-camera inference is a later miles
 70 UR Fall sequences and 179 MNNIT clips have been prepared according to the recorded
 release report. Source inventories and use restrictions are in `data/manifests/` and
 `docs/DATASETS.md`. RetailS remains archived; full PoseLift/UCF acquisition is unfinished.
+
+## Why the new models were not installed
+
+A bounded comparison tried two new model families against the installed ones. Both were
+rejected and the installed models are unchanged.
+
+The **activity challenger** raised fewer alerts on ordinary clips (2 of 15 instead of 3 of
+15) but also detected one fewer of the labelled clips (12 of 16 instead of 13 of 16).
+Fewer false alarms is not worth missing more of what we are looking for, so it was kept as
+an experiment only.
+
+The **fall challenger** looked better on paper — the same 6 of 6 labelled falls detected on
+time, with 4 unmatched alerts instead of 5 — but it reported nothing at all on `fall-01`,
+a fall the installed model does alert on. That was investigated rather than explained away,
+and the cause turned out to be worth knowing:
+
+1. The person falls. The detector records a "rapid posture change" marker at 3.703s.
+2. Body pose is then lost for 0.4 seconds, exactly while the person is landing.
+3. The person is picked up again at 4.204s as a *new* person, because the tracker cannot
+   confidently match someone across the gap. The marker belonged to the old identity and
+   is discarded with it.
+4. The new identity sees only someone already lying still, which looks the same as someone
+   who lay down on purpose. Without the marker, no fall alert can be raised.
+5. The person never stands up again in the clip, so the marker can never be re-recorded,
+   and the backup rule — alerting after two seconds of lying still — needs longer than the
+   clip has left.
+
+The installed model escapes this only by luck. Its threshold is lower (0.3 against 0.8), so
+it called the person down at 3.603s, one frame *before* the pose was lost, while the marker
+was still alive. The challenger is not worse at recognising a person on the ground; it is
+actually more confident once they are down. It simply crosses its threshold a moment later,
+and that moment falls inside the blind gap.
+
+So this is a real miss, not a measurement artefact, and the documented rule applies: keep
+the installed model. It also exposes a limitation that affects the installed model too —
+**a fall can be missed entirely if body pose drops out between the fall itself and the
+landing.** That is now covered by `tests/test_fall_evidence_gap.py` so the behaviour cannot
+change unnoticed. The detection rules were deliberately left alone: changing them would
+invalidate the validation figures quoted above, which would have to be re-measured first.
+
+Any sequence can be inspected the same way:
+
+```sh
+.venv/bin/python scripts/explain_fall_event.py --sequence fall-01
+```
+
+It prints the per-frame posture score against the threshold, the tracked identity, the
+rule state, and a plain-language reason for the alert or the silence.
 
 ## Project files
 
