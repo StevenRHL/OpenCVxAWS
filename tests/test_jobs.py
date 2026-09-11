@@ -119,6 +119,36 @@ def test_reviews_persist_and_do_not_rewrite_revisions(workspace):
         jobs.save_review(run_id, "someone-elses-event", "relevant")
 
 
+
+def test_exported_csv_carries_the_observations_and_the_reviewer_judgement(workspace):
+    """An export that drops the review is a different document from the one on screen."""
+    import csv
+    import io
+    run_id = jobs.create_job(workspace)
+    events = [{"event_id": "incident-1", "revision": 1, "source_start_s": 2.0,
+               "source_end_s": 6.0, "emitted_source_s": 2.5, "status": "active",
+               "category": "possible_fall", "score": 1.0,
+               "observations": ["rapid_posture_change", "sustained_down_posture"]},
+              {"event_id": "incident-2", "revision": 1, "source_start_s": 9.0,
+               "source_end_s": 9.0, "emitted_source_s": 9.0, "status": "incomplete",
+               "category": "unusual_activity", "score": 0.4, "observations": []}]
+    with sqlite3.connect(jobs.run_dir(run_id) / "events.db") as connection:
+        connection.execute("CREATE TABLE revisions(event_id TEXT, revision INTEGER, payload TEXT, PRIMARY KEY(event_id,revision))")
+        for event in events:
+            connection.execute("INSERT INTO revisions VALUES(?,?,?)",
+                               (event["event_id"], 1, json.dumps(event)))
+    jobs.save_review(run_id, "incident-1", "false_alarm", "Shelf, not a person")
+
+    rows = list(csv.DictReader(io.StringIO(jobs.events_csv(run_id))))
+    first, second = rows
+    assert first["observations"] == "rapid_posture_change; sustained_down_posture"
+    assert (first["review_label"], first["review_note"]) == ("false_alarm", "Shelf, not a person")
+    assert first["reviewed_at_utc"]
+    assert second["review_label"] == "unreviewed", "an unreviewed event must say so, not read as blank"
+    assert second["reviewed_at_utc"] == ""
+    assert first["source_start_s"] and first["emitted_source_s"] and first["status"]
+
+
 def test_invalid_dates_and_paths_rejected(workspace):
     with pytest.raises(ValueError, match="timezone"):
         jobs.create_job(workspace, {"recording_start": "2026-09-11T12:00:00"})

@@ -58,6 +58,10 @@ class Tracker:
         self.confidence = confidence
         self.tracks = {}
         self.retired_ids = []
+        # Why each identity ended, kept apart so a run can report how often continuity was
+        # lost to a crossing rather than to absence. Both are already in `retired_ids`.
+        self.gap_retired_ids = []
+        self.ambiguous_ids = []
         self._next = 1
         self._last_t = None
 
@@ -81,6 +85,8 @@ class Tracker:
             raise ValueError("Tracker timestamps must strictly increase")
         self._last_t = t
         self.retired_ids = [i for i, s in self.tracks.items() if t - s['t'] > self.max_gap]
+        self.gap_retired_ids = list(self.retired_ids)
+        self.ambiguous_ids = []
         for i in self.retired_ids:
             del self.tracks[i]
         observations = []
@@ -119,6 +125,7 @@ class Tracker:
         for a in ambiguous_rows:
             track_id = ids[a]
             self.retired_ids.append(track_id)
+            self.ambiguous_ids.append(track_id)
             del self.tracks[track_id]
             costs[a, :] = 1e6
         for b in ambiguous_cols:

@@ -7,8 +7,8 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from watchverify.evaluation import (aggregate, fall_ground_truth, match_fall_events,
-                                    wilson_interval)
+from watchverify.evaluation import (aggregate, failure_gallery, fall_ground_truth,
+                                    match_fall_events, wilson_interval)
 from train_models import assert_no_leakage, mnnit_split, urfall_split
 
 
@@ -80,6 +80,54 @@ def test_aggregate_reports_rates_and_false_alerts_per_hour():
     assert total["recall"] == 1.0
     assert total["precision"] == 0.5, "the alert on the negative sequence must reduce precision"
     assert total["false_alerts_per_hour"] == pytest.approx(1.0)
+
+
+def test_aggregate_reports_the_slow_tail_not_only_the_median():
+    """A median latency hides the alerts that arrived far too late to matter."""
+    results = [match_fall_events([alert(1.0 + delay)], truth(onset=1.0, end=60.0),
+                                 duration_s=60, on_time_s=3.0)
+               for delay in (0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 30.0)]
+    total = aggregate(results)
+    assert total["median_latency_s"] == pytest.approx(0.5)
+    assert total["p90_latency_s"] > 3.0, "the late alert must be visible in the tail"
+
+
+def test_unknown_observation_time_is_reported_and_never_shrinks_recall():
+    """Blind time is reported beside the rates; the missed event still counts against us."""
+    blind = match_fall_events([], truth(), duration_s=100, unobserved_s=100.0)
+    seen = match_fall_events([alert(5.5)], truth(), duration_s=100, unobserved_s=0.0)
+    total = aggregate([blind, seen])
+    assert total["recall"] == 0.5, "an event nobody could see is still a missed event"
+    assert total["unobserved_source_s"] == pytest.approx(100.0)
+    assert total["unobserved_fraction"] == pytest.approx(0.5)
+
+
+def test_wrong_person_is_counted_only_where_identity_labels_exist():
+    labelled = truth()
+    labelled[0]["track_id"] = 7
+    wrong = match_fall_events([dict(alert(5.5), track_id=9)], labelled, duration_s=100)
+    assert wrong["matched"] == 1, "the event was detected, just attributed to someone else"
+    assert wrong["wrong_person"] == 1
+    right = match_fall_events([dict(alert(5.5), track_id=7)], labelled, duration_s=100)
+    assert aggregate([wrong, right])["wrong_person_rate"] == pytest.approx(0.5)
+
+
+def test_wrong_person_rate_is_unknown_without_identity_labels():
+    total = aggregate([match_fall_events([alert(5.5)], truth(), duration_s=100)])
+    assert total["wrong_person_rate"] is None, "unlabelled identity is unknown, not correct"
+
+
+def test_failure_gallery_names_the_sequences_behind_the_rates():
+    gallery = failure_gallery([
+        {"sequence": "fall-03", "missed": 1, "false_alerts": 0, "pose_coverage": 0.4,
+         "true_events": 1, "alerts": []},
+        {"sequence": "adl-11", "missed": 0, "false_alerts": 2, "pose_coverage": 0.99,
+         "true_events": 0, "alerts": [{"category": "person_down", "t": 3.0}]},
+        {"sequence": "adl-12", "missed": 0, "false_alerts": 0, "pose_coverage": 1.0,
+         "true_events": 0, "alerts": []}])
+    assert [entry["sequence"] for entry in gallery] == ["fall-03", "adl-11"]
+    assert gallery[0]["kind"] == "missed_event" and gallery[1]["kind"] == "false_alert"
+    assert "adl-12" not in [entry["sequence"] for entry in gallery]
 
 
 # --- splits -----------------------------------------------------------------

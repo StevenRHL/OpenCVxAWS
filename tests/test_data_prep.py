@@ -212,3 +212,45 @@ def test_ordinary_members_resolve_inside_the_destination(tmp_path):
     assert str(target).startswith(str(destination.resolve()) + "/")
     assert mnnit.classify("Dataset/Shoplifting/Shoplifting (3).mp4") == "shoplifting"
     assert mnnit.classify("Dataset/Other/x.mp4") is None
+
+
+# --- frozen split manifest --------------------------------------------------
+
+SPLITS = ROOT / "data/manifests/splits.jsonl"
+needs_manifest = pytest.mark.skipif(not SPLITS.exists(),
+                                    reason="run scripts/write_split_manifest.py --write first")
+
+
+def manifest_rows():
+    return [json.loads(line) for line in SPLITS.read_text().splitlines() if line.strip()]
+
+
+@needs_manifest
+def test_frozen_split_manifest_still_matches_what_the_code_assigns():
+    """A split that drifts silently makes every earlier held-out number unreadable."""
+    module = _load("write_split_manifest")
+    assert module.check(module.rows()) == []
+
+
+@needs_manifest
+def test_every_manifest_row_states_its_terms_label_unit_and_group():
+    for row in manifest_rows():
+        missing = [field for field in ("corpus", "recording_id", "group_key", "source_sha256",
+                                       "licence", "label_unit", "branch")
+                   if not row.get(field)]
+        assert not missing, f"{row.get('recording_id')} is missing {missing}"
+        assert row["label_unit"] in {"frame_posture_code", "scene_level_only"}
+        assert (row["split"] in {"train", "validation", "test"}) == bool(row["eligible"])
+        if not row["eligible"]:
+            assert row["excluded_reason"], "an excluded recording must say why"
+
+
+@needs_manifest
+def test_identical_footage_never_appears_in_two_splits():
+    """MNNIT ships byte-identical clips under different names, so this is a real risk."""
+    groups = {}
+    for row in manifest_rows():
+        if row["split"]:
+            groups.setdefault(row["group_key"], set()).add(row["split"])
+    leaked = {key: sorted(splits) for key, splits in groups.items() if len(splits) > 1}
+    assert not leaked, f"same content in multiple splits: {leaked}"

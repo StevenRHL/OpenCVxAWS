@@ -20,10 +20,13 @@ def run(run_id):
     job=jobs.get_job(run_id);folder=ROOT/'outputs'/run_id
     config=job.get('config',{});source=Path(job['source_path'])
     started=time.perf_counter();last_t=0.;encoder=None;db=None;all_events={};latest=[];models=Models()
-    metrics={'analysed_frames':0,'decoded_frames':0,'frames_with_pose':0,'valid_person_observations':0,'invalid_person_observations':0,'saturated_frames':0,'pose_seconds':0.,'feature_names':list(FEATURE_NAMES),'model_status':models.status,'warnings':[]}
+    # Time the run analysed but could not observe a usable person. Reported as source
+    # intervals so a reader can tell silence from absence of evidence.
+    unobserved=[];unobserved_start=None
+    metrics={'analysed_frames':0,'decoded_frames':0,'frames_with_pose':0,'valid_person_observations':0,'invalid_person_observations':0,'saturated_frames':0,'frames_without_usable_person':0,'track_gap_retirements':0,'ambiguous_track_retirements':0,'source_duration_s':None,'pose_seconds':0.,'feature_names':list(FEATURE_NAMES),'model_status':models.status,'warnings':[]}
     state='completed';reason='source_ended';error=None
     try:
-        info=video_info(source)
+        info=video_info(source);metrics['source_duration_s']=float(info['duration_s'])
         if info['duration_s']>600:raise ValueError('Please use a video no longer than 10 minutes.')
         if max(info['width'],info['height'])>1920 or min(info['width'],info['height'])>1080:raise ValueError('Please use video at 1920×1080 or smaller.')
         jobs.update_job(run_id,status='running',progress=0.,started_at_utc=datetime.now(timezone.utc).isoformat(),pid=os.getpid(),media=info,model_status=models.status,model_disclosures=models.disclosures())
@@ -52,13 +55,14 @@ def run(run_id):
         next_t=0.;last_analysis=-999.;last_progress=-1.;activity_since={};activity_normal_since={}
         with PoseEstimator(config.get('pose_variant','full'),max_people,width) as estimator, (folder/'predictions.jsonl').open('w') as predictions:
             for index,t,bgr in frames(source):
-                last_t=t;metrics['decoded_frames']+=1
+                metrics['decoded_frames']+=1
                 if (folder/'cancel.request').exists():state='cancelled';reason='cancelled';break
                 if time.perf_counter()-started>3600:raise TimeoutError('The one-hour analysis limit was reached; partial evidence was saved.')
                 if t+1e-6>=next_t:
                     tic=time.perf_counter();poses=estimator.detect(bgr,t);metrics['pose_seconds']+=time.perf_counter()-tic
                     tracks=tracker.update(poses,t)
                     for retired in tracker.retired_ids:buffers.reset(retired);rules.reset(retired);activity_windows.reset(retired);activity_since.pop(retired,None);activity_normal_since.pop(retired,None)
+                    metrics['track_gap_retirements']+=len(tracker.gap_retired_ids);metrics['ambiguous_track_retirements']+=len(tracker.ambiguous_ids)
                     metrics['analysed_frames']+=1;metrics['frames_with_pose']+=bool(poses);metrics['saturated_frames']+=len(poses)>=max_people
                     candidates=[];valid=[];latest=tracks
                     for track_id,pose in tracks:
@@ -107,6 +111,11 @@ def run(run_id):
                         row={'t':t,'track_id':track_id,'valid':feat is not None,'fall_model':fall,'activity_model':activity}
                         if feat is not None:row.update({'features':feat['vector'].tolist(),'feature_mask':feat['feature_mask'].tolist(),'quality':float(feat['quality']),'angle':float(feat['angle']),'down':bool(feat['down'])})
                         predictions.write(json.dumps(row,allow_nan=False)+'\n')
+                    if valid:
+                        if unobserved_start is not None:unobserved.append([round(unobserved_start,3),round(t,3)]);unobserved_start=None
+                    else:
+                        metrics['frames_without_usable_person']+=1
+                        if unobserved_start is None:unobserved_start=t
                     persist(manager.step(candidates,t,valid));last_analysis=t;next_t=t+1/fps
                 # Do not carry stale skeletons across gaps. Decision-time overlay uses emitted state only.
                 overlay=bgr.copy()
@@ -122,6 +131,9 @@ def run(run_id):
                 cv2.putText(overlay,f'{t:07.2f}s  {quality[:90]}',(10,22),cv2.FONT_HERSHEY_SIMPLEX,.48,(245,245,245),1,cv2.LINE_AA)
                 cv2.putText(overlay,'Experimental / decision-time replay / silent export',(10,43),cv2.FONT_HERSHEY_SIMPLEX,.38,(172,185,197),1,cv2.LINE_AA)
                 encoder.write(overlay,t)
+                # A decoded frame rejected by cancellation or a processing failure is
+                # not part of the successfully processed source interval.
+                last_t=t
                 progress=min(.99,t/max(info['duration_s'],t+.1))
                 if progress-last_progress>.025 or index%100==0:
                     jobs.update_job(run_id,progress=progress,summary={'analysed_frames':metrics['analysed_frames'],'events':len(all_events),'source_time_s':t});last_progress=progress
@@ -140,16 +152,26 @@ def run(run_id):
                 if state=='completed':state='failed';error=f'Video export could not finish: {exc}'
         if db:db.close()
         metrics['elapsed_s']=time.perf_counter()-started;metrics['analysis_fps']=metrics['analysed_frames']/max(metrics['elapsed_s'],.001)
-        metrics['source_duration_processed_s']=last_t;metrics['status']=state;metrics['error']=error
+        if unobserved_start is not None:unobserved.append([round(unobserved_start,3),round(last_t,3)])
+        metrics['unobserved_intervals']=unobserved
+        metrics['unobserved_source_s']=round(sum(b-a for a,b in unobserved),3)
+        metrics['source_duration_processed_s']=last_t
+        metrics['unprocessed_source_s']=round(max((metrics['source_duration_s'] or 0.)-last_t,0.),3)
+        metrics['status']=state;metrics['error']=error
         metrics['pose_frame_coverage']=metrics['frames_with_pose']/max(metrics['analysed_frames'],1)
         metrics['source_sha256']=sha256(source)
+        if metrics['source_duration_s'] and last_t<metrics['source_duration_s']-1.:
+            metrics['warnings'].append(f"Only {last_t:.1f}s of a {metrics['source_duration_s']:.1f}s source was decoded; the remainder was never observed.")
+        if unobserved:metrics['warnings'].append(f'No usable person was observed for {metrics["unobserved_source_s"]:.1f}s across {len(unobserved)} interval(s); those periods are unknown, not clear.')
+        if metrics['ambiguous_track_retirements']:metrics['warnings'].append('Person identities were dropped at ambiguous crossings; evidence either side of those moments may belong to different people.')
         if metrics['saturated_frames']:metrics['warnings'].append('Pose capacity reached in some frames; additional people may not have been observed.')
         metrics['warnings'].append('Pose availability is not model accuracy. Absence of an alert does not establish safety.')
         events=list(all_events.values());atomic_json(folder/'events.json',events);atomic_json(folder/'metrics.json',metrics)
-        fields=['event_id','category','track_id','source_start_s','source_end_s','emitted_source_s','occurred_at_utc','created_at_utc','status','reason','score']
+        fields=['event_id','category','track_id','source_start_s','source_end_s','emitted_source_s','occurred_at_utc','created_at_utc','status','reason','score','observations']
         with (folder/'events.csv').open('w',newline='') as f:
-            writer=csv.DictWriter(f,fieldnames=fields,extrasaction='ignore');writer.writeheader();writer.writerows(events)
-        jobs.update_job(run_id,status=state,progress=1. if state=='completed' else job.get('progress',0),error=error,completed_at_utc=datetime.now(timezone.utc).isoformat(),summary={'events':len(events),'analysed_frames':metrics['analysed_frames'],'source_time_s':last_t,'elapsed_s':metrics['elapsed_s'],'pose_coverage':metrics['pose_frame_coverage']})
+            writer=csv.DictWriter(f,fieldnames=fields,extrasaction='ignore');writer.writeheader()
+            writer.writerows([dict(e,observations='; '.join(str(v) for v in e.get('observations',[]))) for e in events])
+        jobs.update_job(run_id,status=state,progress=1. if state=='completed' else job.get('progress',0),error=error,completed_at_utc=datetime.now(timezone.utc).isoformat(),summary={'events':len(events),'analysed_frames':metrics['analysed_frames'],'source_time_s':last_t,'elapsed_s':metrics['elapsed_s'],'pose_coverage':metrics['pose_frame_coverage'],'source_duration_s':metrics['source_duration_s'],'unobserved_source_s':metrics['unobserved_source_s'],'unobserved_intervals':len(unobserved),'unprocessed_source_s':metrics['unprocessed_source_s']})
     return state
 
 if __name__=='__main__':

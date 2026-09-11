@@ -153,9 +153,9 @@ def downloads(job: dict, events: list[dict]):
     folder = jobs.run_dir(job["run_id"])
     st.markdown("#### Take the results with you")
     available = [("Annotated video", "annotated.mp4", "video/mp4"),
-                 ("Event list · JSON", "events.json", "application/json"),
-                 ("Event table · CSV", "events.csv", "text/csv")]
-    for column, (label, name, mime) in zip(st.columns(3), available):
+                 ("Event list · JSON", "events.json", "application/json")]
+    first, second, third = st.columns(3)
+    for column, (label, name, mime) in zip((first, second), available):
         file = folder / name
         with column:
             if file.exists() and file.stat().st_size:
@@ -163,12 +163,54 @@ def downloads(job: dict, events: list[dict]):
                     st.download_button(label, handle, file_name=f"{job['run_id']}-{name}", mime=mime, width="stretch", key=f"download-{job['run_id']}-{name}")
             else:
                 st.button(label, disabled=True, width="stretch", key=f"missing-{job['run_id']}-{name}")
+    with third:
+        # Built on request, not read from disk: it carries the review labels, which are
+        # saved after the worker has already written its own copy of the event table.
+        if events:
+            st.download_button("Event table · CSV", jobs.events_csv(job["run_id"]), file_name=f"{job['run_id']}-events.csv", mime="text/csv", width="stretch", key=f"download-{job['run_id']}-events.csv")
+        else:
+            st.button("Event table · CSV", disabled=True, width="stretch", key=f"missing-{job['run_id']}-events.csv")
     if events:
         review_data = {"run_id": job["run_id"], "events": events,
                        "reviews": jobs.get_reviews(job["run_id"]),
                        "escalations": jobs.get_escalations(job["run_id"])}
         st.download_button("Events with my review notes", json.dumps(review_data, indent=2), file_name=f"{job['run_id']}-review.json", mime="application/json", key=f"review-download-{job['run_id']}")
     st.caption("Source position is the event’s location in the video. Analysis date/time records when this computer processed it. Annotated exports may be silent.")
+
+
+def visibility_note(job: dict, status: str) -> None:
+    """Say how much of the video could not be observed, beside the events themselves.
+
+    Without this line an empty stretch of timeline reads as "nothing happened". It is the
+    difference between a period that was watched and a period that was not.
+    """
+    summary = job.get("summary") or {}
+    blind = summary.get("unobserved_source_s")
+    if status in jobs.ACTIVE or blind is None:
+        return
+    total = float(summary.get("source_duration_s") or 0)
+    processed_value = summary.get("source_time_s")
+    processed = float(total if processed_value is None else processed_value)
+    # A completed encode commonly ends a fraction of a frame before the container's
+    # stated duration. Name only a material tail, or one left by an incomplete run.
+    unprocessed = summary.get("unprocessed_source_s")
+    if unprocessed is None:
+        unprocessed = max(total - processed, 0) if total else 0
+    unprocessed = float(unprocessed)
+    partial = unprocessed > 1.0 or (status != "completed" and unprocessed > 0.05)
+    denominator = processed if partial else (total or processed)
+    tail = (f" A further {unprocessed:.1f}s of the source was not analysed."
+            if partial else "")
+    if summary.get("analysed_frames") == 0 or processed == 0:
+        st.warning("Visibility: no analysed time coverage is available for this run."
+                   f"{tail} An empty timeline does not establish that the footage was clear.")
+        return
+    if not blind:
+        st.caption(f"Visibility: a person was observable throughout the {timestamp(processed)} that was analysed."
+                   f"{tail} This says nothing about whether an event was correctly judged.")
+        return
+    share = f" ({blind / denominator:.0%} of the analysed portion)" if denominator else ""
+    st.warning(f"Visibility: no usable body position was available for {blind:.1f}s{share}, across {summary.get('unobserved_intervals', 1)} interval(s). Those periods are unknown, not clear — nothing could have been detected in them.{tail}")
 
 
 def alert_caveat(branch: str, run_id: str) -> str:
@@ -304,6 +346,7 @@ def analysis_view(run_id: str):
         st.warning(" · ".join(missing_branches))
     if status not in jobs.ACTIVE and job.get("summary", {}).get("pose_coverage") == 0:
         st.warning("No usable body positions were recorded in this analysis. An empty event list cannot be interpreted as an absence of falls or unusual activity.")
+    visibility_note(job, status)
     events = jobs.load_events(run_id)
     reviews = jobs.get_reviews(run_id)
     escalations = jobs.get_escalations(run_id)
@@ -344,7 +387,7 @@ def analysis_view(run_id: str):
             with st.expander("Observation details"):
                 st.json(selected_event)
         else:
-            st.info("No observations have been recorded." if status in jobs.ACTIVE else "No observations were emitted. This does not establish that the video is safe.")
+            st.info("No observations have been recorded." if status in jobs.ACTIVE else "No observations were emitted. This does not establish that the video is safe — check the visibility note above for the time that could not be observed at all.")
         st.caption("These are prompts for human review, not diagnoses or findings of wrongdoing.")
         escalation_history(run_id, escalations)
     with left:
