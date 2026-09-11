@@ -1,0 +1,626 @@
+{
+  "run_id": "pilot-20260911T025806Z",
+  "artifact": "activity.joblib",
+  "sha256": "9d06f7b213809c1df2b33b18bdd1480690091241ec63cd59229fbbf615e0497a",
+  "threshold": 0.613374886257275,
+  "with_mask": false,
+  "n_features": 127,
+  "feature_schema_version": 1,
+  "status": "Experimental pilot; not validated for operational use",
+  "threshold_provenance": "selected on validation only; test split unseen by training",
+  "target": "unusual_motion",
+  "input": "clip_descriptor",
+  "scoring": "probability",
+  "feature_names": [
+    "torso_angle_over_90_mean",
+    "body_aspect_mean",
+    "hip_speed_torso_per_s_mean",
+    "joint_motion_torso_per_s_mean",
+    "left_knee_angle_over_180_mean",
+    "right_knee_angle_over_180_mean",
+    "left_elbow_angle_over_180_mean",
+    "right_elbow_angle_over_180_mean",
+    "left_wrist_hip_torso_distance_mean",
+    "right_wrist_hip_torso_distance_mean",
+    "trailing_angle_range_over_90_mean",
+    "joint_coverage_mean",
+    "torso_angle_over_90_valid_mean",
+    "body_aspect_valid_mean",
+    "hip_speed_torso_per_s_valid_mean",
+    "joint_motion_torso_per_s_valid_mean",
+    "left_knee_angle_over_180_valid_mean",
+    "right_knee_angle_over_180_valid_mean",
+    "left_elbow_angle_over_180_valid_mean",
+    "right_elbow_angle_over_180_valid_mean",
+    "left_wrist_hip_torso_distance_valid_mean",
+    "right_wrist_hip_torso_distance_valid_mean",
+    "trailing_angle_range_over_90_valid_mean",
+    "joint_coverage_valid_mean",
+    "torso_angle_over_90_std",
+    "body_aspect_std",
+    "hip_speed_torso_per_s_std",
+    "joint_motion_torso_per_s_std",
+    "left_knee_angle_over_180_std",
+    "right_knee_angle_over_180_std",
+    "left_elbow_angle_over_180_std",
+    "right_elbow_angle_over_180_std",
+    "left_wrist_hip_torso_distance_std",
+    "right_wrist_hip_torso_distance_std",
+    "trailing_angle_range_over_90_std",
+    "joint_coverage_std",
+    "torso_angle_over_90_valid_std",
+    "body_aspect_valid_std",
+    "hip_speed_torso_per_s_valid_std",
+    "joint_motion_torso_per_s_valid_std",
+    "left_knee_angle_over_180_valid_std",
+    "right_knee_angle_over_180_valid_std",
+    "left_elbow_angle_over_180_valid_std",
+    "right_elbow_angle_over_180_valid_std",
+    "left_wrist_hip_torso_distance_valid_std",
+    "right_wrist_hip_torso_distance_valid_std",
+    "trailing_angle_range_over_90_valid_std",
+    "joint_coverage_valid_std",
+    "torso_angle_over_90_p10",
+    "body_aspect_p10",
+    "hip_speed_torso_per_s_p10",
+    "joint_motion_torso_per_s_p10",
+    "left_knee_angle_over_180_p10",
+    "right_knee_angle_over_180_p10",
+    "left_elbow_angle_over_180_p10",
+    "right_elbow_angle_over_180_p10",
+    "left_wrist_hip_torso_distance_p10",
+    "right_wrist_hip_torso_distance_p10",
+    "trailing_angle_range_over_90_p10",
+    "joint_coverage_p10",
+    "torso_angle_over_90_valid_p10",
+    "body_aspect_valid_p10",
+    "hip_speed_torso_per_s_valid_p10",
+    "joint_motion_torso_per_s_valid_p10",
+    "left_knee_angle_over_180_valid_p10",
+    "right_knee_angle_over_180_valid_p10",
+    "left_elbow_angle_over_180_valid_p10",
+    "right_elbow_angle_over_180_valid_p10",
+    "left_wrist_hip_torso_distance_valid_p10",
+    "right_wrist_hip_torso_distance_valid_p10",
+    "trailing_angle_range_over_90_valid_p10",
+    "joint_coverage_valid_p10",
+    "torso_angle_over_90_p50",
+    "body_aspect_p50",
+    "hip_speed_torso_per_s_p50",
+    "joint_motion_torso_per_s_p50",
+    "left_knee_angle_over_180_p50",
+    "right_knee_angle_over_180_p50",
+    "left_elbow_angle_over_180_p50",
+    "right_elbow_angle_over_180_p50",
+    "left_wrist_hip_torso_distance_p50",
+    "right_wrist_hip_torso_distance_p50",
+    "trailing_angle_range_over_90_p50",
+    "joint_coverage_p50",
+    "torso_angle_over_90_valid_p50",
+    "body_aspect_valid_p50",
+    "hip_speed_torso_per_s_valid_p50",
+    "joint_motion_torso_per_s_valid_p50",
+    "left_knee_angle_over_180_valid_p50",
+    "right_knee_angle_over_180_valid_p50",
+    "left_elbow_angle_over_180_valid_p50",
+    "right_elbow_angle_over_180_valid_p50",
+    "left_wrist_hip_torso_distance_valid_p50",
+    "right_wrist_hip_torso_distance_valid_p50",
+    "trailing_angle_range_over_90_valid_p50",
+    "joint_coverage_valid_p50",
+    "torso_angle_over_90_p90",
+    "body_aspect_p90",
+    "hip_speed_torso_per_s_p90",
+    "joint_motion_torso_per_s_p90",
+    "left_knee_angle_over_180_p90",
+    "right_knee_angle_over_180_p90",
+    "left_elbow_angle_over_180_p90",
+    "right_elbow_angle_over_180_p90",
+    "left_wrist_hip_torso_distance_p90",
+    "right_wrist_hip_torso_distance_p90",
+    "trailing_angle_range_over_90_p90",
+    "joint_coverage_p90",
+    "torso_angle_over_90_valid_p90",
+    "body_aspect_valid_p90",
+    "hip_speed_torso_per_s_valid_p90",
+    "joint_motion_torso_per_s_valid_p90",
+    "left_knee_angle_over_180_valid_p90",
+    "right_knee_angle_over_180_valid_p90",
+    "left_elbow_angle_over_180_valid_p90",
+    "right_elbow_angle_over_180_valid_p90",
+    "left_wrist_hip_torso_distance_valid_p90",
+    "right_wrist_hip_torso_distance_valid_p90",
+    "trailing_angle_range_over_90_valid_p90",
+    "joint_coverage_valid_p90",
+    "hip_speed_abs_mean",
+    "hip_speed_abs_max",
+    "angular_speed_abs_mean",
+    "angular_speed_abs_max",
+    "down_fraction",
+    "upright_fraction",
+    "quality_mean"
+  ],
+  "window_s": 5.0,
+  "stride_s": 1.0,
+  "feature_selection": {
+    "used": [
+      "torso_angle_over_90_mean",
+      "body_aspect_mean",
+      "hip_speed_torso_per_s_mean",
+      "joint_motion_torso_per_s_mean",
+      "left_knee_angle_over_180_mean",
+      "right_knee_angle_over_180_mean",
+      "left_elbow_angle_over_180_mean",
+      "right_elbow_angle_over_180_mean",
+      "left_wrist_hip_torso_distance_mean",
+      "right_wrist_hip_torso_distance_mean",
+      "torso_angle_over_90_std",
+      "body_aspect_std",
+      "hip_speed_torso_per_s_std",
+      "joint_motion_torso_per_s_std",
+      "left_knee_angle_over_180_std",
+      "right_knee_angle_over_180_std",
+      "left_elbow_angle_over_180_std",
+      "right_elbow_angle_over_180_std",
+      "left_wrist_hip_torso_distance_std",
+      "right_wrist_hip_torso_distance_std",
+      "torso_angle_over_90_p10",
+      "body_aspect_p10",
+      "hip_speed_torso_per_s_p10",
+      "joint_motion_torso_per_s_p10",
+      "left_knee_angle_over_180_p10",
+      "right_knee_angle_over_180_p10",
+      "left_elbow_angle_over_180_p10",
+      "right_elbow_angle_over_180_p10",
+      "left_wrist_hip_torso_distance_p10",
+      "right_wrist_hip_torso_distance_p10",
+      "torso_angle_over_90_p50",
+      "body_aspect_p50",
+      "hip_speed_torso_per_s_p50",
+      "joint_motion_torso_per_s_p50",
+      "left_knee_angle_over_180_p50",
+      "right_knee_angle_over_180_p50",
+      "left_elbow_angle_over_180_p50",
+      "right_elbow_angle_over_180_p50",
+      "left_wrist_hip_torso_distance_p50",
+      "right_wrist_hip_torso_distance_p50",
+      "torso_angle_over_90_p90",
+      "body_aspect_p90",
+      "hip_speed_torso_per_s_p90",
+      "joint_motion_torso_per_s_p90",
+      "left_knee_angle_over_180_p90",
+      "right_knee_angle_over_180_p90",
+      "left_elbow_angle_over_180_p90",
+      "right_elbow_angle_over_180_p90",
+      "left_wrist_hip_torso_distance_p90",
+      "right_wrist_hip_torso_distance_p90",
+      "hip_speed_abs_mean",
+      "hip_speed_abs_max",
+      "angular_speed_abs_mean",
+      "angular_speed_abs_max",
+      "down_fraction",
+      "upright_fraction"
+    ],
+    "dropped": [
+      "trailing_angle_range_over_90_mean",
+      "joint_coverage_mean",
+      "torso_angle_over_90_valid_mean",
+      "body_aspect_valid_mean",
+      "hip_speed_torso_per_s_valid_mean",
+      "joint_motion_torso_per_s_valid_mean",
+      "left_knee_angle_over_180_valid_mean",
+      "right_knee_angle_over_180_valid_mean",
+      "left_elbow_angle_over_180_valid_mean",
+      "right_elbow_angle_over_180_valid_mean",
+      "left_wrist_hip_torso_distance_valid_mean",
+      "right_wrist_hip_torso_distance_valid_mean",
+      "trailing_angle_range_over_90_valid_mean",
+      "joint_coverage_valid_mean",
+      "trailing_angle_range_over_90_std",
+      "joint_coverage_std",
+      "torso_angle_over_90_valid_std",
+      "body_aspect_valid_std",
+      "hip_speed_torso_per_s_valid_std",
+      "joint_motion_torso_per_s_valid_std",
+      "left_knee_angle_over_180_valid_std",
+      "right_knee_angle_over_180_valid_std",
+      "left_elbow_angle_over_180_valid_std",
+      "right_elbow_angle_over_180_valid_std",
+      "left_wrist_hip_torso_distance_valid_std",
+      "right_wrist_hip_torso_distance_valid_std",
+      "trailing_angle_range_over_90_valid_std",
+      "joint_coverage_valid_std",
+      "trailing_angle_range_over_90_p10",
+      "joint_coverage_p10",
+      "torso_angle_over_90_valid_p10",
+      "body_aspect_valid_p10",
+      "hip_speed_torso_per_s_valid_p10",
+      "joint_motion_torso_per_s_valid_p10",
+      "left_knee_angle_over_180_valid_p10",
+      "right_knee_angle_over_180_valid_p10",
+      "left_elbow_angle_over_180_valid_p10",
+      "right_elbow_angle_over_180_valid_p10",
+      "left_wrist_hip_torso_distance_valid_p10",
+      "right_wrist_hip_torso_distance_valid_p10",
+      "trailing_angle_range_over_90_valid_p10",
+      "joint_coverage_valid_p10",
+      "trailing_angle_range_over_90_p50",
+      "joint_coverage_p50",
+      "torso_angle_over_90_valid_p50",
+      "body_aspect_valid_p50",
+      "hip_speed_torso_per_s_valid_p50",
+      "joint_motion_torso_per_s_valid_p50",
+      "left_knee_angle_over_180_valid_p50",
+      "right_knee_angle_over_180_valid_p50",
+      "left_elbow_angle_over_180_valid_p50",
+      "right_elbow_angle_over_180_valid_p50",
+      "left_wrist_hip_torso_distance_valid_p50",
+      "right_wrist_hip_torso_distance_valid_p50",
+      "trailing_angle_range_over_90_valid_p50",
+      "joint_coverage_valid_p50",
+      "trailing_angle_range_over_90_p90",
+      "joint_coverage_p90",
+      "torso_angle_over_90_valid_p90",
+      "body_aspect_valid_p90",
+      "hip_speed_torso_per_s_valid_p90",
+      "joint_motion_torso_per_s_valid_p90",
+      "left_knee_angle_over_180_valid_p90",
+      "right_knee_angle_over_180_valid_p90",
+      "left_elbow_angle_over_180_valid_p90",
+      "right_elbow_angle_over_180_valid_p90",
+      "left_wrist_hip_torso_distance_valid_p90",
+      "right_wrist_hip_torso_distance_valid_p90",
+      "trailing_angle_range_over_90_valid_p90",
+      "joint_coverage_valid_p90",
+      "quality_mean"
+    ],
+    "reason": "validity-mask and pose-quality columns describe how well the person was seen, not what they did, and pose failure is class-correlated in this corpus"
+  },
+  "model_family": "gradient_boosting_n300_d2_lr0.05",
+  "model_comparison": {
+    "logistic": {
+      "cv": {
+        "mean_roc_auc": 0.7722341649713745,
+        "sd": 0.07411349752434863,
+        "min": 0.5977272727272728,
+        "max": 0.8434244791666667,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8755597209205457,
+      "validation_window_average_precision": 0.8703828686022121
+    },
+    "gradient_boosting": {
+      "cv": {
+        "mean_roc_auc": 0.7921067216144471,
+        "sd": 0.07307721941420571,
+        "min": 0.6454237288135594,
+        "max": 0.9065733414485696,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8718108924294492,
+      "validation_window_average_precision": 0.8825057466447557
+    },
+    "random_forest": {
+      "cv": {
+        "mean_roc_auc": 0.7822147818434902,
+        "sd": 0.08351780506887015,
+        "min": 0.6371473354231976,
+        "max": 0.9153175591531756,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8709778194314277,
+      "validation_window_average_precision": 0.8991466752968763
+    },
+    "logistic_c0.3": {
+      "cv": {
+        "mean_roc_auc": 0.7807540349523937,
+        "sd": 0.0776072458313263,
+        "min": 0.6005681818181818,
+        "max": 0.8670705630791162,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8586899927106113,
+      "validation_window_average_precision": 0.8557635187450917
+    },
+    "logistic_c1": {
+      "cv": {
+        "mean_roc_auc": 0.7722341649713745,
+        "sd": 0.07411349752434863,
+        "min": 0.5977272727272728,
+        "max": 0.8434244791666667,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8755597209205457,
+      "validation_window_average_precision": 0.8703828686022121
+    },
+    "logistic_c3": {
+      "cv": {
+        "mean_roc_auc": 0.7609115474678714,
+        "sd": 0.07104660157935852,
+        "min": 0.5934659090909091,
+        "max": 0.8432744978697504,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8850359262730397,
+      "validation_window_average_precision": 0.8788089293784972
+    },
+    "gradient_boosting_n100_d2_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.7817199087878511,
+        "sd": 0.08460639662211111,
+        "min": 0.6099791013584117,
+        "max": 0.910529519172246,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8394251796313652,
+      "validation_window_average_precision": 0.8402251928382996
+    },
+    "gradient_boosting_n100_d2_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.7897504439772582,
+        "sd": 0.07372749937692215,
+        "min": 0.6718913270637408,
+        "max": 0.9087795765877957,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8602520045819013,
+      "validation_window_average_precision": 0.8682992316603418
+    },
+    "gradient_boosting_n100_d3_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.7819787058968681,
+        "sd": 0.08447807367401736,
+        "min": 0.6408045977011494,
+        "max": 0.9227895392278953,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8588982609601167,
+      "validation_window_average_precision": 0.866607402261365
+    },
+    "gradient_boosting_n100_d3_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.7879636426947643,
+        "sd": 0.07357538279670106,
+        "min": 0.6664406779661016,
+        "max": 0.9103362391033624,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.864000833072998,
+      "validation_window_average_precision": 0.8702310747430944
+    },
+    "gradient_boosting_n200_d2_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.7958399869910177,
+        "sd": 0.07289115884077225,
+        "min": 0.6784221525600836,
+        "max": 0.9184418746195983,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8600437363323961,
+      "validation_window_average_precision": 0.8661308524756028
+    },
+    "gradient_boosting_n200_d2_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.7921067216144471,
+        "sd": 0.07307721941420571,
+        "min": 0.6454237288135594,
+        "max": 0.9065733414485696,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8718108924294492,
+      "validation_window_average_precision": 0.8825057466447557
+    },
+    "gradient_boosting_n200_d3_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.7877945408405345,
+        "sd": 0.0740677266806615,
+        "min": 0.6609195402298851,
+        "max": 0.9081569115815691,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8691034051858795,
+      "validation_window_average_precision": 0.8761520388775152
+    },
+    "gradient_boosting_n200_d3_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.7883649594554278,
+        "sd": 0.06993678604494154,
+        "min": 0.6501694915254238,
+        "max": 0.9034869240348692,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8641049671977508,
+      "validation_window_average_precision": 0.8764513970586105
+    },
+    "gradient_boosting_n300_d2_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.7958628150197147,
+        "sd": 0.07079749648976638,
+        "min": 0.672542372881356,
+        "max": 0.9172245891661593,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8622305529522025,
+      "validation_window_average_precision": 0.8689540837962821
+    },
+    "gradient_boosting_n300_d2_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.7914353499288057,
+        "sd": 0.07187367856773999,
+        "min": 0.6383050847457626,
+        "max": 0.9059646987218504,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8581693220868478,
+      "validation_window_average_precision": 0.867638050872309
+    },
+    "gradient_boosting_n300_d3_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.7924286759114403,
+        "sd": 0.07161665793288925,
+        "min": 0.671864406779661,
+        "max": 0.9056603773584906,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8709778194314276,
+      "validation_window_average_precision": 0.8742914259731818
+    },
+    "gradient_boosting_n300_d3_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.7894920592790141,
+        "sd": 0.07195743988079234,
+        "min": 0.6464406779661017,
+        "max": 0.9068776628119293,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8630636259502238,
+      "validation_window_average_precision": 0.8753519842593502
+    },
+    "random_forest_n200_leaf2": {
+      "cv": {
+        "mean_roc_auc": 0.784656910443085,
+        "sd": 0.08025156529065268,
+        "min": 0.6483803552769071,
+        "max": 0.9240348692403487,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8887847547641362,
+      "validation_window_average_precision": 0.9152513828458295
+    },
+    "random_forest_n200_leaf5": {
+      "cv": {
+        "mean_roc_auc": 0.7795721464891809,
+        "sd": 0.08575016305770244,
+        "min": 0.627742946708464,
+        "max": 0.9162515566625156,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8724356971779652,
+      "validation_window_average_precision": 0.9016007567787587
+    },
+    "random_forest_n200_leaf10": {
+      "cv": {
+        "mean_roc_auc": 0.7703805229587692,
+        "sd": 0.08691171454934053,
+        "min": 0.6068443051201672,
+        "max": 0.910024906600249,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8379673018848277,
+      "validation_window_average_precision": 0.8646308974582819
+    },
+    "random_forest_n400_leaf2": {
+      "cv": {
+        "mean_roc_auc": 0.7868289030726332,
+        "sd": 0.08086358269901155,
+        "min": 0.6596133751306165,
+        "max": 0.9296388542963885,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8820160366552119,
+      "validation_window_average_precision": 0.9095759462922157
+    },
+    "random_forest_n400_leaf5": {
+      "cv": {
+        "mean_roc_auc": 0.7822147818434902,
+        "sd": 0.08351780506887015,
+        "min": 0.6371473354231976,
+        "max": 0.9153175591531756,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8709778194314277,
+      "validation_window_average_precision": 0.8991466752968763
+    },
+    "random_forest_n400_leaf10": {
+      "cv": {
+        "mean_roc_auc": 0.77329919062062,
+        "sd": 0.08547432202657451,
+        "min": 0.6178160919540231,
+        "max": 0.9140722291407223,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8344267416432365,
+      "validation_window_average_precision": 0.8642214839830766
+    },
+    "random_forest_n600_leaf2": {
+      "cv": {
+        "mean_roc_auc": 0.7862624671902082,
+        "sd": 0.0805223314868898,
+        "min": 0.6551724137931034,
+        "max": 0.9262141967621419,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8796209517859002,
+      "validation_window_average_precision": 0.9085154662296875
+    },
+    "random_forest_n600_leaf5": {
+      "cv": {
+        "mean_roc_auc": 0.7822098770502618,
+        "sd": 0.08402322724866787,
+        "min": 0.6345350052246604,
+        "max": 0.9215442092154421,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8672289909403311,
+      "validation_window_average_precision": 0.896474038361353
+    },
+    "random_forest_n600_leaf10": {
+      "cv": {
+        "mean_roc_auc": 0.7730428646433811,
+        "sd": 0.08500263601271964,
+        "min": 0.6225182863113897,
+        "max": 0.9187422166874222,
+        "folds": 15
+      },
+      "validation_window_roc_auc": 0.8315109861501615,
+      "validation_window_average_precision": 0.8622738017721484
+    },
+    "isolation_forest_normal_only": {
+      "validation_window_roc_auc": 0.44392377382068104,
+      "validation_window_average_precision": 0.5143000616569007,
+      "note": "Trained on normal windows only; needs no shoplifting labels. Measured at 0.37 ROC-AUC in the pilot \u2014 worse than chance \u2014 and kept only as a recorded negative result."
+    }
+  },
+  "release_cleared": null,
+  "threshold_selection": "out-of-fold clip-grouped scores on the training split, targeting 21% of ordinary windows flagged",
+  "alert_rule": "the application requires 2 consecutive flagged windows; a single flagged window is not an alert",
+  "training_source": "MNNIT retail clips, MediaPipe pose features, fixed-length windows",
+  "label_scope": "scene level only \u2014 the clip label says a clip contains shoplifting, never who or when. Every window of a shoplifting clip inherits the clip label, so many positive windows contain no act at all.",
+  "eligibility": "single-person clips with pose coverage >= 0.5 and at least one full 5.0s window",
+  "not_proof_of_theft": "Flags motion resembling clips labelled shoplifting. It does not establish theft and requires human review.",
+  "expected_false_alert_rate": 0.2,
+  "expected_detection_rate": 0.8125,
+  "alert_caveat": "In validation, 3 of 15 ordinary retail clips (20%) raised an activity alert under the two-consecutive-window rule. This is a clip fraction, not an hourly rate or the probability this alert is correct. Results cover eligible single-person clips; clip labels do not identify who acted or when. Movement does not establish theft. Performance on your camera is unknown.",
+  "license_note": "MNNIT CC BY 4.0; cite DOI 10.17632/r3yjf35hzr.1",
+  "metrics_path": "runs/pilot-20260911T025806Z/activity_metrics.json",
+  "disclosure_evidence": {
+    "split": "validation",
+    "model_run_id": "pilot-20260911T025806Z",
+    "artifact_sha256": "9d06f7b213809c1df2b33b18bdd1480690091241ec63cd59229fbbf615e0497a",
+    "metrics_path": "runs/pilot-20260911T025806Z/activity_metrics.json",
+    "metrics_sha256": "9b44b1af850066c15961663a989695df44442adaf2efe801a6ef6cd152ec1728",
+    "operating_point": {
+      "threshold": 0.613374886257275,
+      "provenance": "out_of_fold_training_scores",
+      "tp": 63,
+      "fp": 11,
+      "fn": 34,
+      "window_precision": 0.8513513513513513,
+      "window_recall": 0.6494845360824743,
+      "flagged_normal_window_fraction": 0.1111111111111111,
+      "sustained_clip_rule": {
+        "run_length": 2,
+        "clips": 31,
+        "shoplifting_clips_alerted": 13,
+        "shoplifting_clips": 16,
+        "normal_clips_alerted": 3,
+        "normal_clips": 15,
+        "clip_recall": 0.8125,
+        "normal_clip_alert_rate": 0.2
+      },
+      "target_normal_flag_rate": 0.21
+    },
+    "verified_on": "2026-09-11",
+    "note": "Snapshotted automatically by train_models.py at training time."
+  }
+}

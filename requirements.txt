@@ -1,0 +1,11 @@
+mediapipe==0.10.21
+opencv-contrib-python==4.11.0.86
+numpy==1.26.4
+scipy==1.15.3
+scikit-learn==1.7.2
+streamlit==1.49.1
+imageio-ffmpeg==0.6.0
+av==16.0.1
+requests==2.32.5
+pytest==8.4.2
+gdown==5.2.0

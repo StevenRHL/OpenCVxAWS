@@ -1,0 +1,308 @@
+{
+  "run_id": "pilot-20260911T024220Z",
+  "artifact": "fall.joblib",
+  "sha256": "2bbdecc476e4f9de3c94d316a87fb844cb601c8f7d0f1e4d68b06aa6cbf7304a",
+  "threshold": 0.3,
+  "with_mask": true,
+  "n_features": 24,
+  "feature_schema_version": 1,
+  "status": "Experimental pilot; not validated for operational use",
+  "threshold_provenance": "selected on validation only; test split unseen by training",
+  "target": "down_posture",
+  "input": "frame_vector",
+  "scoring": "probability",
+  "feature_names": [
+    "torso_angle_over_90",
+    "body_aspect",
+    "hip_speed_torso_per_s",
+    "joint_motion_torso_per_s",
+    "left_knee_angle_over_180",
+    "right_knee_angle_over_180",
+    "left_elbow_angle_over_180",
+    "right_elbow_angle_over_180",
+    "left_wrist_hip_torso_distance",
+    "right_wrist_hip_torso_distance",
+    "trailing_angle_range_over_90",
+    "joint_coverage",
+    "torso_angle_over_90_valid",
+    "body_aspect_valid",
+    "hip_speed_torso_per_s_valid",
+    "joint_motion_torso_per_s_valid",
+    "left_knee_angle_over_180_valid",
+    "right_knee_angle_over_180_valid",
+    "left_elbow_angle_over_180_valid",
+    "right_elbow_angle_over_180_valid",
+    "left_wrist_hip_torso_distance_valid",
+    "right_wrist_hip_torso_distance_valid",
+    "trailing_angle_range_over_90_valid",
+    "joint_coverage_valid"
+  ],
+  "model_family": "gradient_boosting_n200_d2_lr0.1",
+  "model_comparison": {
+    "logistic_c0.3": {
+      "cv": {
+        "mean_roc_auc": 0.9494168851332205,
+        "sd": 0.07180030491236102,
+        "min": 0.7624178047546788,
+        "max": 1.0,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9642395717977114,
+      "validation_average_precision": 0.8648799121623799
+    },
+    "logistic_c1": {
+      "cv": {
+        "mean_roc_auc": 0.9476072172749987,
+        "sd": 0.07270843966164746,
+        "min": 0.767779463834092,
+        "max": 1.0,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9638935031376892,
+      "validation_average_precision": 0.8638643466344165
+    },
+    "logistic_c3": {
+      "cv": {
+        "mean_roc_auc": 0.9465342716764894,
+        "sd": 0.0736747633959903,
+        "min": 0.768841679312089,
+        "max": 1.0,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9637550756736804,
+      "validation_average_precision": 0.8633208673875307
+    },
+    "gradient_boosting_n100_d2_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.9665887284584892,
+        "sd": 0.04900229911583223,
+        "min": 0.8412746585735963,
+        "max": 1.0,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9894910483573275,
+      "validation_average_precision": 0.971100722367071
+    },
+    "gradient_boosting_n100_d2_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.9660312015590337,
+        "sd": 0.049838658352060215,
+        "min": 0.8404653515427416,
+        "max": 0.9996352836971811,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9905177187153931,
+      "validation_average_precision": 0.9745629707707828
+    },
+    "gradient_boosting_n100_d3_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.963388859342005,
+        "sd": 0.051078023776977274,
+        "min": 0.8355083459787558,
+        "max": 0.9995831813682072,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9906561461794019,
+      "validation_average_precision": 0.9735822984361576
+    },
+    "gradient_boosting_n100_d3_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.9681376975611291,
+        "sd": 0.049795064505282205,
+        "min": 0.8366211431461811,
+        "max": 0.9989417989417989,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9941168327796235,
+      "validation_average_precision": 0.9838426332535293
+    },
+    "gradient_boosting_n200_d2_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.9657788140504568,
+        "sd": 0.049826395214996294,
+        "min": 0.8393019726858878,
+        "max": 0.9997394883551294,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9913828903654486,
+      "validation_average_precision": 0.9777209056088529
+    },
+    "gradient_boosting_n200_d2_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.9696845534607215,
+        "sd": 0.03890068345510598,
+        "min": 0.8733464677737124,
+        "max": 0.9996352836971812,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9923403469915097,
+      "validation_average_precision": 0.9798660261046179
+    },
+    "gradient_boosting_n200_d3_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.9687452878089408,
+        "sd": 0.048569740473189016,
+        "min": 0.8355083459787558,
+        "max": 0.999478976710259,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9944975083056479,
+      "validation_average_precision": 0.9864605917436099
+    },
+    "gradient_boosting_n200_d3_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.9683534216001274,
+        "sd": 0.05016954271639965,
+        "min": 0.8358118361153263,
+        "max": 0.998941798941799,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9947858988556663,
+      "validation_average_precision": 0.9867907356549535
+    },
+    "gradient_boosting_n300_d2_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.9688569334413353,
+        "sd": 0.041142822878216516,
+        "min": 0.8622009569377991,
+        "max": 0.9996873860261554,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9922595976375046,
+      "validation_average_precision": 0.9800656831959417
+    },
+    "gradient_boosting_n300_d2_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.9677331805231422,
+        "sd": 0.04211518938439787,
+        "min": 0.8661412890515058,
+        "max": 0.9996352836971812,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9928248431155408,
+      "validation_average_precision": 0.9814983349290042
+    },
+    "gradient_boosting_n300_d3_lr0.05": {
+      "cv": {
+        "mean_roc_auc": 0.968952054636176,
+        "sd": 0.04808761472499099,
+        "min": 0.8361659079413253,
+        "max": 0.9994268743812849,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9942552602436323,
+      "validation_average_precision": 0.9864074664888396
+    },
+    "gradient_boosting_n300_d3_lr0.1": {
+      "cv": {
+        "mean_roc_auc": 0.9677656961424929,
+        "sd": 0.04989394262325985,
+        "min": 0.8361659079413253,
+        "max": 0.998941798941799,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.994624400147656,
+      "validation_average_precision": 0.9863149372320739
+    }
+  },
+  "down_hold_s": 2.0,
+  "fall_hold_s": 0.0,
+  "training_source": "urfall posture labels, plus MNNIT retail frames as weak not-lying negatives",
+  "training_sources": {
+    "urfall": {
+      "license": "CC BY-NC-SA 4.0",
+      "release_cleared": false,
+      "note": "Non-commercial academic research. NOT cleared for competition or commercial distribution."
+    }
+  },
+  "release_cleared": false,
+  "cross_domain_negatives": {
+    "retail_negative_frames": 4540,
+    "retail_negative_clips": 43,
+    "retail_negative_sources": [
+      "normal_002",
+      "normal_003",
+      "normal_004",
+      "normal_005",
+      "normal_006",
+      "normal_007",
+      "normal_008",
+      "normal_009",
+      "normal_010",
+      "normal_014",
+      "normal_015",
+      "normal_016",
+      "normal_017",
+      "normal_018",
+      "normal_019",
+      "normal_020",
+      "normal_021",
+      "normal_022",
+      "normal_023",
+      "normal_024",
+      "normal_031",
+      "normal_032",
+      "normal_033",
+      "normal_034",
+      "normal_035",
+      "normal_037",
+      "normal_038",
+      "normal_039",
+      "normal_041",
+      "normal_042",
+      "normal_044",
+      "normal_045",
+      "normal_046",
+      "normal_047",
+      "normal_048",
+      "normal_049",
+      "normal_050",
+      "normal_051",
+      "normal_052",
+      "normal_053",
+      "normal_054",
+      "normal_055",
+      "normal_056"
+    ],
+    "label_basis": "weak \u2014 MNNIT normal clips are assumed to contain no one lying on the floor; the clips were not annotated frame by frame"
+  },
+  "label_note": "Publisher posture labels were defined on the depth frame of the same synchronised camera-0 sequence.",
+  "actor_independence": "unknown \u2014 actor identity is not published in the downloaded material",
+  "license_note": "urfall: Non-commercial academic research. NOT cleared for competition or commercial distribution.",
+  "not_a_diagnosis": "Down posture is not an injury diagnosis and a fall alert requires human review.",
+  "validation_summary": {
+    "true_events": 6,
+    "matched": 6,
+    "on_time": 6,
+    "false_alerts": 5,
+    "precision": 0.5454545454545454,
+    "median_latency_s": 0.551
+  },
+  "alert_caveat": "In validation, 5 of 11 fall/person-down alerts did not match a labelled fall event; all 6 labelled falls were matched on time. This is a small validation sample used to select the operating point, not an independent test or a reliable hourly rate. Unmatched alerts do not establish that no person was down. Posture is not an injury diagnosis. Performance on your camera is unknown.",
+  "metrics_path": "runs/pilot-20260911T024220Z/fall_metrics.json",
+  "disclosure_evidence": {
+    "split": "validation",
+    "model_run_id": "pilot-20260911T024220Z",
+    "artifact_sha256": "2bbdecc476e4f9de3c94d316a87fb844cb601c8f7d0f1e4d68b06aa6cbf7304a",
+    "metrics_path": "runs/pilot-20260911T024220Z/fall_metrics.json",
+    "metrics_sha256": "153de3e99f709a63a1cf6254698e33c5e272082b3c0edd65e9d7e9039663f85a",
+    "operating_point": {
+      "posture_threshold": 0.3,
+      "fall_hold_s": 0.0,
+      "down_hold_s": 2.0,
+      "true_events": 6,
+      "alerts": 11,
+      "matched": 6,
+      "on_time": 6,
+      "missed": 0,
+      "false_alerts": 5,
+      "recall": 1.0,
+      "on_time_recall": 1.0,
+      "precision": 0.5454545454545454,
+      "false_alerts_per_hour": 225.0478226623157,
+      "median_latency_s": 0.551
+    },
+    "verified_on": "2026-09-11",
+    "note": "Snapshotted automatically by train_models.py at training time."
+  }
+}

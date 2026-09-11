@@ -1,0 +1,60 @@
+HOW TO RUN WATCHVERIFY
+======================
+
+Everything is installed. Just do step 1.
+
+
+1. START IT
+-----------
+Double-click:  Launch WatchVerify.command
+
+A black terminal window opens. Leave it open.
+Your browser opens at:  http://127.0.0.1:8501
+If it does not open, type that address in your browser.
+
+
+2. USE IT
+---------
+- Drag a video file into the upload box.
+- (Optional) type the date/time the video was recorded.
+- Click "Start analysis".
+- Watch the timeline next to the video.
+- Label events: relevant / false alarm / unclear.
+- Download the marked MP4, or the JSON / CSV.
+
+Video limits: 10 minutes, 500 MB, 1920x1080.
+Everything runs on this Mac. Nothing is uploaded.
+
+
+3. STOP IT
+----------
+Close the browser tab.
+Click the black terminal window and press Control + C.
+Then close that window.
+
+
+IF SOMETHING BREAKS
+-------------------
+"Cannot be opened because it is from an unidentified developer":
+  Right-click Launch WatchVerify.command -> Open -> Open.
+
+App will not start, or a module is missing:
+  Double-click  Setup WatchVerify.command
+  Wait until it says "Setup finished."
+  Then double-click Launch WatchVerify.command again.
+
+Port 8501 already in use:
+  Open Terminal and run:
+    pkill -f "streamlit run app.py"
+  Then launch again.
+
+
+PLEASE NOTE
+-----------
+Trained fall and activity classifiers are installed, alongside experimental rules.
+Accuracy on your camera is not established. Camera input in the app is not available.
+Alert buttons record your decision; they do not call anyone.
+New analyses save model-specific validation disclosures with the run. Older analyses
+without a saved disclosure explicitly say that it is unavailable.
+Release clearance is unresolved; see the model cards and CONTINUE_HERE.md.
+An empty alert list does NOT mean nothing happened.

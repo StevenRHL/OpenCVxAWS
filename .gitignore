@@ -1,0 +1,19 @@
+.venv/
+.claude/
+__pycache__/
+.pytest_cache/
+.DS_Store
+data/raw/
+data/processed/
+third_party/
+models/*.task
+outputs/
+runs/
+*.log
+.runtime/
+
+# Internal working notes and planning docs — kept locally, not published.
+# README.md is the one exception so the repo page isn't blank.
+*.md
+!README.md
+docs/
