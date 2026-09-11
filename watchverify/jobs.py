@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 from contextlib import contextmanager
+import csv
 from datetime import datetime, timezone
 import fcntl
+import io
 import hashlib
 import json
 import os
@@ -268,6 +270,34 @@ def get_reviews(run_id: str) -> dict:
                 for row in connection.execute("SELECT event_id,label,note,reviewed_at_utc FROM reviews")}
     finally:
         connection.close()
+
+
+EVENT_CSV_FIELDS = ("event_id", "category", "track_id", "source_start_s", "source_end_s",
+                    "emitted_source_s", "occurred_at_utc", "created_at_utc", "emitted_at_utc",
+                    "status", "reason", "score", "score_type", "observations",
+                    "review_label", "review_note", "reviewed_at_utc")
+
+
+def events_csv(run_id: str) -> str:
+    """One exported row per event, carrying the observations and the reviewer's judgement.
+
+    The worker cannot write this file: a review is added after analysis ends, so the export
+    is built when it is requested. Unreviewed events say so explicitly rather than leaving
+    the column blank, which would read as an assessment nobody made.
+    """
+    reviews = get_reviews(run_id)
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=list(EVENT_CSV_FIELDS), extrasaction="ignore")
+    writer.writeheader()
+    for event in load_events(run_id):
+        review = reviews.get(event.get("event_id"), {})
+        row = dict(event)
+        row["observations"] = "; ".join(str(v) for v in event.get("observations", []))
+        row["review_label"] = review.get("label", "unreviewed")
+        row["review_note"] = review.get("note", "")
+        row["reviewed_at_utc"] = review.get("reviewed_at_utc", "")
+        writer.writerow(row)
+    return buffer.getvalue()
 
 
 def load_events(run_id: str) -> list[dict]:

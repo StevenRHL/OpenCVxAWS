@@ -136,16 +136,28 @@ def _emit(detector, track_id, features, t, sequence):
     return emitted
 
 
-def match_fall_events(predicted, truth, duration_s, on_time_s=3.0, tolerance_s=1.0):
+def match_fall_events(predicted, truth, duration_s, on_time_s=3.0, tolerance_s=1.0,
+                      unobserved_s=0.0):
     """Match at most one alert per true event; surplus alerts are false.
 
     An alert counts as on-time only when it arrives within `on_time_s` of the onset.
     Detecting a fall long after the person is already down is a different product claim
     from detecting it as it happens, so the two are reported separately.
+
+    `unobserved_s` is the source time this sequence could not be observed at all. It is
+    carried through so aggregate rates can be read next to how much of the footage the
+    system was blind to; it never changes the denominator of recall, which stays every
+    true event including the ones nobody could have seen.
+
+    A truth event carrying `track_id` also produces a wrong-person count: an alert that
+    lands in the right interval but names a different person is matched here — the event
+    was detected — and reported separately, because pointing a reviewer at the wrong
+    person is a distinct failure from missing the event.
     """
     alerts = sorted((c for c in predicted if c['category'] in FALL_CATEGORIES), key=lambda c: c['t'])
     unmatched = list(alerts)
     matched, on_time, latencies = 0, 0, []
+    identity_labelled, wrong_person = 0, 0
     for event in truth:
         window = [c for c in unmatched
                   if event['onset_s'] - tolerance_s <= c['t'] <= event['end_s'] + tolerance_s]
@@ -158,16 +170,24 @@ def match_fall_events(predicted, truth, duration_s, on_time_s=3.0, tolerance_s=1
         latencies.append(latency)
         if latency <= on_time_s:
             on_time += 1
+        if event.get('track_id') is not None:
+            identity_labelled += 1
+            wrong_person += int(first.get('track_id') != event['track_id'])
     return dict(true_events=len(truth), alerts=len(alerts), matched=matched,
                 on_time=on_time, missed=len(truth) - matched, false_alerts=len(unmatched),
-                latencies_s=[round(v, 3) for v in latencies], duration_s=duration_s)
+                identity_labelled=identity_labelled, wrong_person=wrong_person,
+                latencies_s=[round(v, 3) for v in latencies], duration_s=duration_s,
+                unobserved_s=float(unobserved_s))
 
 
 def aggregate(results):
     """Combine per-sequence match results into event-level rates."""
-    total = {k: sum(r[k] for r in results)
-             for k in ('true_events', 'alerts', 'matched', 'on_time', 'missed', 'false_alerts')}
-    hours = sum(r['duration_s'] for r in results) / 3600.0
+    total = {k: sum(r.get(k, 0) for r in results)
+             for k in ('true_events', 'alerts', 'matched', 'on_time', 'missed', 'false_alerts',
+                       'identity_labelled', 'wrong_person')}
+    seconds = sum(r['duration_s'] for r in results)
+    hours = seconds / 3600.0
+    unobserved = sum(r.get('unobserved_s', 0.0) for r in results)
     latencies = [v for r in results for v in r['latencies_s']]
     total.update(
         recall=total['matched'] / total['true_events'] if total['true_events'] else None,
@@ -175,8 +195,37 @@ def aggregate(results):
         precision=total['matched'] / total['alerts'] if total['alerts'] else None,
         false_alerts_per_hour=total['false_alerts'] / hours if hours else None,
         source_hours=round(hours, 4),
-        median_latency_s=round(float(np.median(latencies)), 3) if latencies else None)
+        median_latency_s=round(float(np.median(latencies)), 3) if latencies else None,
+        p90_latency_s=round(float(np.percentile(latencies, 90)), 3) if latencies else None,
+        # Reported only where identity labels exist. Without them this is unknown, not zero.
+        wrong_person_rate=(total['wrong_person'] / total['identity_labelled']
+                           if total['identity_labelled'] else None),
+        unobserved_source_s=round(unobserved, 3),
+        unobserved_fraction=round(unobserved / seconds, 4) if seconds else None)
     return total
+
+
+def failure_gallery(per_sequence, limit=20):
+    """Named failures behind the rates: what was missed, and what alerted with nothing there.
+
+    A rate alone cannot be investigated. Each entry points at a sequence so the footage
+    and its pose coverage can be inspected directly.
+    """
+    gallery = []
+    for record in per_sequence:
+        if record.get('missed'):
+            gallery.append(dict(kind='missed_event', sequence=record.get('sequence'),
+                                true_events=record.get('true_events'),
+                                pose_coverage=record.get('pose_coverage'),
+                                alerts=record.get('alerts', [])))
+        if record.get('false_alerts'):
+            gallery.append(dict(kind='false_alert', sequence=record.get('sequence'),
+                                false_alerts=record.get('false_alerts'),
+                                pose_coverage=record.get('pose_coverage'),
+                                alerts=record.get('alerts', [])))
+    gallery.sort(key=lambda entry: (entry['kind'] != 'missed_event',
+                                    entry.get('pose_coverage') if entry.get('pose_coverage') is not None else 1.0))
+    return gallery[:limit]
 
 
 def wilson_interval(successes, trials, z=1.96):

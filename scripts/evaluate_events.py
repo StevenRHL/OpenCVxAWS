@@ -14,10 +14,25 @@ import numpy as np
 from watchverify.core import RuleDetector
 from watchverify.models import Models
 from watchverify.evaluation import (load_posture_labels,frame_times,fall_ground_truth,replay,
-                                    match_fall_events,aggregate,wilson_interval)
+                                    match_fall_events,aggregate,wilson_interval,failure_gallery)
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'scripts'))
 from train_models import fall_sequences,urfall_split,xy
+
+def unobserved_seconds(attempts,reasons,duration_s):
+    """Source seconds the extractor attempted but produced no usable observation for.
+
+    Each attempt covers the span until the next attempt; the last one covers the remaining
+    source time. Counting attempts instead of seconds would misreport corpora sampled at
+    different intervals.
+    """
+    times=[float(a[0]) for a in attempts]
+    total=0.
+    for i,(t,reason) in enumerate(zip(times,reasons)):
+        if reason=='ok':continue
+        total+=(times[i+1]-t) if i+1<len(times) else max(duration_s-t,0.)
+    return total
+
 
 def fall_report(split,posture_threshold,down_hold,fall_hold,use_model=True,on_time_s=3.0,source='urfall'):
     labels=load_posture_labels(source=source)
@@ -36,12 +51,15 @@ def fall_report(split,posture_threshold,down_hold,fall_hold,use_model=True,on_ti
         d=np.load(path,allow_pickle=False)
         reasons=[str(v) for v in d['attempt_reason']]
         coverage=reasons.count('ok')/max(len(reasons),1)
+        unobserved=unobserved_seconds(d['attempts'],reasons,max(times.values()))
         truth=fall_ground_truth(sid,labels,times)
         events=replay(path,detector=RuleDetector(down_hold=down_hold,fall_hold=fall_hold),
                       score=score,threshold=posture_threshold)
-        matched=match_fall_events(events,truth,max(times.values()),on_time_s=on_time_s)
+        matched=match_fall_events(events,truth,max(times.values()),on_time_s=on_time_s,
+                                  unobserved_s=unobserved)
         results.append(matched)
         per_sequence.append({'sequence':sid,'pose_coverage':round(coverage,4),
+                             'unobserved_s':round(unobserved,3),
                              'true_events':len(truth),
                              'alerts':[{'category':c['category'],'t':round(c['t'],2)}
                                        for c in events if c['category']!='recovery'],
@@ -55,7 +73,8 @@ def fall_report(split,posture_threshold,down_hold,fall_hold,use_model=True,on_ti
     return {'split':split,'source':source,'posture_threshold':posture_threshold,
             'down_hold_s':down_hold,'fall_hold_s':fall_hold,
             'model_used':bool(use_model),'on_time_horizon_s':on_time_s,
-            'summary':summary,'per_sequence':per_sequence}
+            'summary':summary,'failure_gallery':failure_gallery(per_sequence),
+            'per_sequence':per_sequence}
 
 
 def activity_report(split):
