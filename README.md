@@ -1,13 +1,34 @@
 # WatchVerify — experimental video review
 
-The VSC folder is the current project. Start with `CONTINUE_HERE.md` for the latest
-completed part, checks, and next step. The JKO/opencv-ai-build copy is older.
+The VSC folder is the current project; the JKO/opencv-ai-build copy is older. Planning,
+status and handoff notes are kept on the build machine and are not published here, so this
+file and `HOW TO RUN.txt` are what a checkout has.
+
+## Install it
+
+Double-click **Setup WatchVerify.command** once. It needs Python 3.10-3.12 and reports
+the versions it found if none fits, installs `requirements-lock.txt`, downloads the
+MediaPipe pose landmarker (about 15 MB, `models/*.task`, not in the repository) against a
+pinned checksum from an immutable upstream revision, and then runs one real inference on a
+synthetic frame. It prints PASS only if the installation can actually analyse something.
+
+`scripts/acquire_pose_assets.py` fetches the asset on its own, and
+`scripts/verify_install.py` runs the smoke check on its own. Every fetch appends its
+origin, revision, size, checksum and licence to `data/manifests/downloads.jsonl`, which is
+why that file shows as modified after setup.
 
 ## Open it
 
 Double-click **Launch WatchVerify.command**. Keep its terminal open and use
-http://127.0.0.1:8501. The existing environment works on this Mac; a clean-install test
-remains pending. If dependencies are missing, run **Setup WatchVerify.command** first.
+http://127.0.0.1:8501.
+
+A clean install was tested on 12 September 2026 by cloning this repository into an empty
+directory: setup selected Python 3.10.0, installed the 73 pinned packages, downloaded and
+checksum-verified both pose variants, and passed its smoke inference. `pytest tests/` in
+that clone reported 177 passed, 13 skipped, 0 failed; each skip names the prepared footage,
+training run or feature cache that is deliberately not in the repository. In the app,
+**Start analysis** was enabled, a 5.3-second UR Fall clip produced one possible-fall
+observation at 00:00:03.5, and the exported annotated MP4 decoded to all 160 frames.
 
 Upload a short recording, optionally supply its known recording time with UTC offset,
 and select **Start analysis**. Review the timestamped timeline, save relevant/false-alarm/
@@ -23,8 +44,9 @@ unclear labels, and download annotated MP4 or JSON/CSV. Limits: ten minutes, 500
   contacts nobody. New runs snapshot the loaded models' disclosures so later model
   changes do not change the figures attached to a run. Older runs without snapshots
   explicitly show that model-specific evaluation information was not saved.
-- Completed RGB research-video runs and focused software tests. See `docs/EXPERIMENTS.md`
-  for exactly what was checked; these checks do not establish detection reliability.
+- Completed RGB research-video runs and focused software tests. Exactly what was checked is
+  recorded in the build machine's experiment log; these checks do not establish detection
+  reliability.
 
 ## Model evidence and limits
 
@@ -32,8 +54,8 @@ Installed models are from `pilot-20260910T232430Z`. The activity validation reco
 on 3/15 ordinary clips (20%) under the two-consecutive-window rule. Fall validation
 recorded 11 alerts: 6 matched labelled falls and 5 were unmatched. These are small
 validation samples, not reliable hourly rates or a probability that a particular alert
-is correct. They were used during development. Separate test results and limitations
-are in `docs/RELEASE_REPORT.md`; Part 2 did not rerun accuracy evaluation.
+is correct. They were used during development. Separate test results and limitations are
+in the release report kept with the project notes; Part 2 did not rerun accuracy evaluation.
 
 Activity labels apply to clips, not a particular person/action interval. Movement does
 not establish theft. Posture does not diagnose injury. Empty alerts do not establish safety.
@@ -46,14 +68,15 @@ these limits explicitly. No new legal clearance is claimed.
 A model comparison on 11 September 2026 produced two challengers. Neither was installed,
 and the reasons are recorded below under "Why the new models were not installed".
 
-Full browser upload/review/decision/cancel/restart/seek/export validation and clean setup
-remain open. Representative camera footage and new held-out evaluation are needed before
+Clean setup is now tested from a fresh clone, as described above. Browser validation of
+review, decision, cancel, restart and seek remains open; only upload, analysis and export
+were exercised. Representative camera footage and new held-out evaluation are needed before
 further model claims. Own-camera preparation/capture scripts exist, but no own-camera
 corpus is present. The app accepts files; live-camera inference is a later milestone.
 
 70 UR Fall sequences and 179 MNNIT clips have been prepared according to the recorded
-release report. Source inventories and use restrictions are in `data/manifests/` and
-`docs/DATASETS.md`. RetailS remains archived; full PoseLift/UCF acquisition is unfinished.
+release report. Source inventories and use restrictions are in `data/manifests/`.
+RetailS remains archived; full PoseLift/UCF acquisition is unfinished.
 
 ## Why the new models were not installed
 
@@ -106,6 +129,6 @@ rule state, and a plain-language reason for the alert or the silence.
 ## Project files
 
 `app.py`: interface. `watchverify/`: processing and storage. `models/`: installed artifacts
-and cards. `scripts/`: preparation/training tools. `outputs/`: saved analyses.
-`docs/STATUS.md`: latest handoff followed by historical notes. `docs/COUNCIL_REVIEW.md`:
-architecture constraints. `CONTINUE_HERE.md`: next bounded part and manual instructions.
+and cards. `scripts/`: acquisition, preparation, training and verification tools.
+`data/manifests/`: what was downloaded, prepared and split. `outputs/`: saved analyses.
+Handoff, architecture and decision notes live with the build machine's working documents.

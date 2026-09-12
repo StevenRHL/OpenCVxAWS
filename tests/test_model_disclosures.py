@@ -10,6 +10,10 @@ from watchverify.models import Models
 from watchverify.alerts import BRANCH_PROMPT
 
 ROOT = Path(__file__).resolve().parents[1]
+CLIP = ROOT / "data/processed/urfall/fall-04.mp4"
+needs_clip = pytest.mark.skipif(not CLIP.exists(),
+                                reason="needs prepared UR Fall footage: run "
+                                       "scripts/acquire_data.py then scripts/prepare_urfall.py")
 
 
 @pytest.mark.parametrize("name", ["fall", "activity"])
@@ -19,6 +23,11 @@ def test_installed_disclosure_matches_artifact_and_validation(name):
     assert evidence["artifact_sha256"] == card["sha256"]
     assert hashlib.sha256((ROOT / "models" / card["artifact"]).read_bytes()).hexdigest() == card["sha256"]
     metrics_path = ROOT / evidence["metrics_path"]
+    if not metrics_path.exists():
+        # The card-to-artifact checks above hold anywhere. The evidence file itself is a
+        # training-run output kept outside the repository; recreate it with
+        # scripts/train_models.py to check the rest.
+        pytest.skip(f"{evidence['metrics_path']} is not present in this checkout")
     assert hashlib.sha256(metrics_path.read_bytes()).hexdigest() == evidence["metrics_sha256"]
     point = json.loads(metrics_path.read_text())["selected_operating_point"]
     assert point == evidence["operating_point"]
@@ -63,6 +72,7 @@ def test_only_successfully_loaded_models_get_snapshots():
     assert models.disclosures() == {}
 
 
+@needs_clip
 def test_worker_persists_loaded_disclosures_before_processing():
     # Exercise the real worker's startup and manifest write; stop at pose initialization.
     import tempfile
@@ -74,7 +84,7 @@ def test_worker_persists_loaded_disclosures_before_processing():
     with tempfile.TemporaryDirectory() as folder:
         target = Path(folder)
         with patch.object(jobs, "ROOT", target), patch.object(worker, "ROOT", target), patch.object(worker, "PoseEstimator", StopPose):
-            run_id = jobs.create_job(ROOT / "data/processed/urfall/fall-04.mp4")
+            run_id = jobs.create_job(CLIP)
             assert worker.run(run_id) == "failed"
             saved = jobs.get_job(run_id)
             assert "intentional stop" in saved["error"]

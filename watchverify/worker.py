@@ -6,12 +6,11 @@ import cv2
 from . import jobs
 from .perception import PoseEstimator,VideoExport,frames,video_info,sha256
 from .core import Tracker,FeatureBuffer,RuleDetector,IncidentManager,FEATURE_NAMES
-from .features import WindowAggregator
+from .features import (aggregator_for,expected_samples,sampling_supported,WINDOW_S,STRIDE_S,
+                       ACTIVITY_SUSTAINED_WINDOWS,ACTIVITY_CLEAR_WINDOWS,MIN_WINDOW_SAMPLES)
 from .models import Models
 ROOT=Path(__file__).resolve().parents[1]
 BONES=[(11,12),(11,13),(13,15),(12,14),(14,16),(11,23),(12,24),(23,24),(23,25),(25,27),(24,26),(26,28)]
-ACTIVITY_CLEAR_HOLD=2.0
-ACTIVITY_SUSTAIN=1.0
 
 def atomic_json(path,value):
     tmp=path.with_suffix(path.suffix+'.tmp');tmp.write_text(json.dumps(value,indent=2,allow_nan=False));tmp.replace(path)
@@ -42,9 +41,25 @@ def run(run_id):
             for key in ('fall_hold','down_hold','recovery_hold'):
                 if f'{key}_s' in fall_card:timing[key]=float(fall_card[f'{key}_s'])
         rules=RuleDetector(**timing);metrics['rule_timing']=timing
-        activity_windows=WindowAggregator(*( [float(models.loaded['activity'][1].get('window_s',5.)),
-                                              float(models.loaded['activity'][1].get('stride_s',1.))]
-                                             if 'activity' in models.loaded else []))
+        activity_window_s,activity_stride_s=WINDOW_S,STRIDE_S
+        if 'activity' in models.loaded:
+            activity_card=models.loaded['activity'][1]
+            activity_window_s=float(activity_card.get('window_s',WINDOW_S));activity_stride_s=float(activity_card.get('stride_s',STRIDE_S))
+        activity_windows=aggregator_for(fps,activity_window_s,activity_stride_s)
+        metrics['activity_sampling']={'analysis_fps':fps,'window_s':activity_window_s,
+                                      'expected_samples_per_window':expected_samples(fps,activity_window_s),
+                                      'min_samples_per_window':activity_windows.min_samples,
+                                      'max_gap_s':activity_windows.max_gap_s}
+        # An analysis rate too low to fill a window cannot produce the input this model was
+        # fitted on. Saying so is the point: at one frame per second the branch used to
+        # treat every frame as a gap and emit nothing at all, with nothing to read anywhere.
+        if 'activity' in models.loaded and not sampling_supported(fps,activity_window_s):
+            models.loaded.pop('activity')
+            models.status['activity']=(f'Unavailable: {fps:g} fps puts only '
+                                       f'{expected_samples(fps,activity_window_s)} observations in a '
+                                       f'{activity_window_s:g}s window; at least {MIN_WINDOW_SAMPLES} are needed')
+            metrics['warnings'].append('activity_branch_disabled_for_analysis_rate')
+            jobs.update_job(run_id,model_status=models.status,model_disclosures=models.disclosures())
         manager=IncidentManager(run_id,config.get('recording_start'))
         db=sqlite3.connect(folder/'events.db');db.execute('CREATE TABLE IF NOT EXISTS revisions(event_id TEXT, revision INTEGER, payload TEXT, PRIMARY KEY(event_id,revision))')
         encoder=VideoExport(folder/'annotated.partial.mp4',info['width'],info['height'],info['fps'])
@@ -52,7 +67,13 @@ def run(run_id):
             for event in revisions:
                 payload=json.dumps(event,allow_nan=False);db.execute('INSERT OR IGNORE INTO revisions VALUES(?,?,?)',(event['event_id'],event['revision'],payload));all_events[event['event_id']]=event
             db.commit()
-        next_t=0.;last_analysis=-999.;last_progress=-1.;activity_since={};activity_normal_since={}
+        # Runs of consecutive windows, not elapsed seconds: a window that never closed is
+        # absent evidence, and time alone cannot tell it apart from evidence against.
+        next_t=0.;last_analysis=-999.;last_progress=-1.;activity_run={};activity_normal_run={}
+        sustained_windows=ACTIVITY_SUSTAINED_WINDOWS;clear_windows=ACTIVITY_CLEAR_WINDOWS
+        if 'activity' in models.loaded:
+            sustained_windows=int(models.loaded['activity'][1].get('sustained_windows',sustained_windows))
+        metrics['activity_rule']={'sustained_windows':sustained_windows,'clear_windows':clear_windows}
         with PoseEstimator(config.get('pose_variant','full'),max_people,width) as estimator, (folder/'predictions.jsonl').open('w') as predictions:
             for index,t,bgr in frames(source):
                 metrics['decoded_frames']+=1
@@ -61,7 +82,7 @@ def run(run_id):
                 if t+1e-6>=next_t:
                     tic=time.perf_counter();poses=estimator.detect(bgr,t);metrics['pose_seconds']+=time.perf_counter()-tic
                     tracks=tracker.update(poses,t)
-                    for retired in tracker.retired_ids:buffers.reset(retired);rules.reset(retired);activity_windows.reset(retired);activity_since.pop(retired,None);activity_normal_since.pop(retired,None)
+                    for retired in tracker.retired_ids:buffers.reset(retired);rules.reset(retired);activity_windows.reset(retired);activity_run.pop(retired,None);activity_normal_run.pop(retired,None)
                     metrics['track_gap_retirements']+=len(tracker.gap_retired_ids);metrics['ambiguous_track_retirements']+=len(tracker.ambiguous_ids)
                     metrics['analysed_frames']+=1;metrics['frames_with_pose']+=bool(poses);metrics['saturated_frames']+=len(poses)>=max_people
                     candidates=[];valid=[];latest=tracks
@@ -70,17 +91,34 @@ def run(run_id):
                         if feat is None:metrics['invalid_person_observations']+=1
                         else:metrics['valid_person_observations']+=1;valid.append(track_id)
                         fall=activity=None
-                        decision=feat
+                        decision=feat;activity_events=[]
                         if feat is not None:
                             fall=models.score('fall',feat['vector'],feat['feature_mask'])
                             # The activity model reads a window of recent movement, not one
                             # frame. Before a full ungapped window exists there is no score
                             # and the branch abstains rather than guessing.
-                            descriptor=activity_windows.update(track_id,t,feat['vector'],feat['feature_mask'],
-                                                               feat['hip_speed'],feat['angular_speed'],
-                                                               feat['down'],feat['upright'],feat['quality'])
-                            if descriptor is not None:
-                                activity=models.score('activity',descriptor)
+                            for window in activity_windows.update(track_id,t,feat['vector'],feat['feature_mask'],
+                                                                 feat['hip_speed'],feat['angular_speed'],
+                                                                 feat['down'],feat['upright'],feat['quality']):
+                                activity=models.score('activity',window.descriptor)
+                                if activity is None:continue
+                                # A window that does not continue the previous one begins a
+                                # new run. Scores either side of a break in observation are
+                                # not consecutive evidence, however close together they fall.
+                                if not window.continuous:activity_run.pop(track_id,None);activity_normal_run.pop(track_id,None)
+                                if activity['positive']:
+                                    activity_normal_run.pop(track_id,None)
+                                    activity_run[track_id]=activity_run.get(track_id,0)+1
+                                    if activity_run[track_id]>=sustained_windows:
+                                        activity_events.append({'category':'unusual_activity','track_id':track_id,'score':activity['score'],'score_type':activity.get('score_type','uncalibrated_anomaly_score'),'observations':['unusual_motion_against_training_baseline','human_review_required']})
+                                else:
+                                    activity_run.pop(track_id,None)
+                                    # Sustained ordinary movement closes an activity incident.
+                                    # The manager ignores this when none is active.
+                                    activity_normal_run[track_id]=activity_normal_run.get(track_id,0)+1
+                                    if activity_normal_run[track_id]>=clear_windows:
+                                        activity_events.append({'category':'activity_clear','track_id':track_id,'score':activity['score'],'score_type':activity.get('score_type','uncalibrated_anomaly_score'),'observations':['sustained_normal_activity']})
+                                        activity_normal_run.pop(track_id,None)
                             if fall and fall['positive']:
                                 decision=dict(feat,down=True,upright=False)
                         obs=rules.update(track_id,decision,t)
@@ -90,24 +128,10 @@ def run(run_id):
                                 c['observations']=[v.replace('horizontal_posture','down_posture') for v in c['observations']]
                                 c['observations'].append('trained_down_posture_support')
                         candidates.extend(obs)
-                        # Only a frame that actually carries a score may advance or clear the
-                        # sustained-evidence state. Frames between windows carry no evidence
-                        # either way, and treating them as negative would reset the counter
-                        # faster than scores arrive, so it could never accumulate.
-                        if activity is not None:
-                            if activity['positive']:
-                                activity_normal_since.pop(track_id,None)
-                                activity_since.setdefault(track_id,t)
-                                if t-activity_since[track_id]>=ACTIVITY_SUSTAIN:
-                                    candidates.append({'category':'unusual_activity','track_id':track_id,'score':activity['score'],'score_type':activity.get('score_type','uncalibrated_anomaly_score'),'observations':['unusual_motion_against_training_baseline','human_review_required']})
-                            else:
-                                activity_since.pop(track_id,None)
-                                # Sustained ordinary movement closes an activity incident.
-                                # The manager ignores this when none is active.
-                                activity_normal_since.setdefault(track_id,t)
-                                if t-activity_normal_since[track_id]>=ACTIVITY_CLEAR_HOLD:
-                                    candidates.append({'category':'activity_clear','track_id':track_id,'score':activity['score'],'score_type':activity.get('score_type','uncalibrated_anomaly_score'),'observations':['sustained_normal_activity']})
-                                    activity_normal_since.pop(track_id,None)
+                        # Only a closed window carries evidence. Frames between windows say
+                        # nothing either way, which is why the run is counted in windows and
+                        # advanced where they are scored rather than on every analysed frame.
+                        candidates.extend(activity_events)
                         row={'t':t,'track_id':track_id,'valid':feat is not None,'fall_model':fall,'activity_model':activity}
                         if feat is not None:row.update({'features':feat['vector'].tolist(),'feature_mask':feat['feature_mask'].tolist(),'quality':float(feat['quality']),'angle':float(feat['angle']),'down':bool(feat['down'])})
                         predictions.write(json.dumps(row,allow_nan=False)+'\n')

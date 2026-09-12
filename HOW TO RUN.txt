@@ -1,10 +1,23 @@
 HOW TO RUN WATCHVERIFY
 ======================
 
-Everything is installed. Just do step 1.
+First time on this Mac, do step 1. After that, start at step 2.
 
 
-1. START IT
+1. INSTALL IT (first time only)
+-------------------------------
+Double-click:  Setup WatchVerify.command
+
+It installs the pinned packages, downloads the MediaPipe pose model (about 15 MB,
+so this needs internet once), checks the download against its expected checksum,
+and then runs one test analysis to prove the installation works.
+
+Wait until it prints "Setup finished and verified."
+If it stops with an error, the error says what to fix. Do not skip to step 2:
+without the pose model the app opens but "Start analysis" stays greyed out.
+
+
+2. START IT
 -----------
 Double-click:  Launch WatchVerify.command
 
@@ -13,7 +26,7 @@ Your browser opens at:  http://127.0.0.1:8501
 If it does not open, type that address in your browser.
 
 
-2. USE IT
+3. USE IT
 ---------
 - Drag a video file into the upload box.
 - (Optional) type the date/time the video was recorded.
@@ -26,7 +39,7 @@ Video limits: 10 minutes, 500 MB, 1920x1080.
 Everything runs on this Mac. Nothing is uploaded.
 
 
-3. STOP IT
+4. STOP IT
 ----------
 Close the browser tab.
 Click the black terminal window and press Control + C.
@@ -40,8 +53,15 @@ IF SOMETHING BREAKS
 
 App will not start, or a module is missing:
   Double-click  Setup WatchVerify.command
-  Wait until it says "Setup finished."
+  Wait until it says "Setup finished and verified."
   Then double-click Launch WatchVerify.command again.
+
+"Start analysis" is greyed out, or the sidebar says the pose asset is not installed:
+  The pose model was never downloaded, or the download did not match its checksum.
+  Double-click  Setup WatchVerify.command  and read what it prints.
+
+Setup says no supported Python was found:
+  It lists the versions it found. Install Python 3.12 from python.org and run it again.
 
 Port 8501 already in use:
   Open Terminal and run:
@@ -56,5 +76,5 @@ Accuracy on your camera is not established. Camera input in the app is not avail
 Alert buttons record your decision; they do not call anyone.
 New analyses save model-specific validation disclosures with the run. Older analyses
 without a saved disclosure explicitly say that it is unavailable.
-Release clearance is unresolved; see the model cards and CONTINUE_HERE.md.
+Release clearance is unresolved; see the model cards in the models folder.
 An empty alert list does NOT mean nothing happened.

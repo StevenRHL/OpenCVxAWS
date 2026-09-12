@@ -1,4 +1,10 @@
-"""Bounded, provenance-recorded dataset acquisition; never executes downloaded code."""
+"""Bounded, provenance-recorded acquisition; never executes downloaded code.
+
+`fetch` takes an optional `sha256`. When given, the bytes are verified before they are
+published: a mismatch leaves nothing at the target path and is recorded as
+`failed_checksum`. Callers that pin a hash must therefore also pin an immutable upstream
+URL — see scripts/acquire_pose_assets.py.
+"""
 from pathlib import Path
 import argparse, concurrent.futures, datetime, hashlib, json, shutil, subprocess, threading
 
@@ -13,12 +19,15 @@ def record(item):
         MANIFEST.parent.mkdir(parents=True, exist_ok=True)
         with MANIFEST.open('a') as f: f.write(json.dumps(item) + '\n')
 
-def fetch(url, relative, source, license_note='Unverified'):
+def fetch(url, relative, source, license_note='Unverified', sha256=None):
     target = ROOT / relative
     target.parent.mkdir(parents=True, exist_ok=True)
     row = dict(source_id=source, url=url, path=relative, retrieved_at_utc=datetime.datetime.now(datetime.timezone.utc).isoformat(), license_note=license_note)
     if target.exists():
-        row.update(status='cached', bytes=target.stat().st_size, sha256=hashlib.sha256(target.read_bytes()).hexdigest()); record(row); return row
+        digest = hashlib.sha256(target.read_bytes()).hexdigest()
+        row.update(status='cached', bytes=target.stat().st_size, sha256=digest)
+        if sha256 and digest != sha256: row.update(status='failed_checksum', expected_sha256=sha256, error='File already present does not match the pinned checksum')
+        record(row); return row
     used = sum(p.stat().st_size for p in (ROOT/'data/raw').rglob('*') if p.is_file())
     if used >= LIMIT or shutil.disk_usage(ROOT).free < RESERVE + 256*1024**2:
         row.update(status='blocked_budget'); record(row); return row
@@ -34,8 +43,15 @@ def fetch(url, relative, source, license_note='Unverified'):
         row.update(status='failed_html',error='HTML response instead of requested data'); record(row); return row
     if target.suffix=='.zip' and first[:2]!=b'pk':
         row.update(status='failed_type',error='ZIP magic absent'); record(row); return row
+    digest = hashlib.sha256(partial.read_bytes()).hexdigest()
+    if sha256 and digest != sha256:
+        # Fail closed: never publish bytes the caller did not ask for. A pinned hash that
+        # stops matching means the upstream path is mutable or the file was replaced, and
+        # the caller has to decide that, not this function.
+        row.update(status='failed_checksum', expected_sha256=sha256, sha256=digest, bytes=partial.stat().st_size, error='Downloaded bytes do not match the pinned checksum')
+        partial.unlink(missing_ok=True); record(row); return row
     partial.rename(target)
-    row.update(status='downloaded',bytes=target.stat().st_size,sha256=hashlib.sha256(target.read_bytes()).hexdigest())
+    row.update(status='downloaded',bytes=target.stat().st_size,sha256=digest)
     record(row); print(json.dumps(row),flush=True); return row
 
 def urfall(count=3):
@@ -54,6 +70,6 @@ def urfall(count=3):
         list(pool.map(lambda j:fetch(*j),jobs))
 
 if __name__=='__main__':
-    p=argparse.ArgumentParser(); p.add_argument('--urfall-count',type=int); p.add_argument('--url');p.add_argument('--path');p.add_argument('--source');p.add_argument('--license',default='Unverified');a=p.parse_args()
+    p=argparse.ArgumentParser(); p.add_argument('--urfall-count',type=int); p.add_argument('--url');p.add_argument('--path');p.add_argument('--source');p.add_argument('--license',default='Unverified');p.add_argument('--sha256');a=p.parse_args()
     if a.urfall_count: urfall(a.urfall_count)
-    elif a.url: fetch(a.url,a.path,a.source,a.license)
+    elif a.url: fetch(a.url,a.path,a.source,a.license,a.sha256)

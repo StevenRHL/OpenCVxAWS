@@ -226,6 +226,9 @@ def manifest_rows():
 
 
 @needs_manifest
+@pytest.mark.skipif(not (ROOT / "data/processed/features/urfall").exists(),
+                    reason="recomputing the assignment needs the feature caches: run "
+                           "scripts/extract_features.py first")
 def test_frozen_split_manifest_still_matches_what_the_code_assigns():
     """A split that drifts silently makes every earlier held-out number unreadable."""
     module = _load("write_split_manifest")

@@ -19,6 +19,12 @@ from watchverify.core import Tracker
 
 ROOT = Path(__file__).resolve().parents[1]
 CLIP = ROOT / "data/processed/urfall/fall-04.mp4"
+# Pose is stubbed here, but the worker still decodes a real file. Prepared footage is not
+# in the repository, so on a fresh clone this says what is missing rather than failing
+# inside create_job with "Select a non-empty video file", which names the wrong cause.
+needs_clip = pytest.mark.skipif(not CLIP.exists(),
+                                reason="needs prepared UR Fall footage: run "
+                                       "scripts/acquire_data.py then scripts/prepare_urfall.py")
 
 
 def standing_pose(cx=300.0, cy=200.0):
@@ -58,6 +64,7 @@ def run_with(visible_until, folder):
     return run_id, state, metrics
 
 
+@needs_clip
 def test_time_with_no_usable_person_is_reported_as_an_interval_not_as_quiet():
     with tempfile.TemporaryDirectory() as folder:
         _run_id, state, metrics = run_with(1.0, folder)
@@ -71,6 +78,7 @@ def test_time_with_no_usable_person_is_reported_as_an_interval_not_as_quiet():
     assert any("unknown, not clear" in warning for warning in metrics["warnings"])
 
 
+@needs_clip
 def test_a_fully_observed_run_claims_no_blind_time():
     with tempfile.TemporaryDirectory() as folder:
         _run_id, state, metrics = run_with(math.inf, folder)
@@ -80,6 +88,7 @@ def test_a_fully_observed_run_claims_no_blind_time():
     assert metrics["frames_without_usable_person"] == 0
 
 
+@needs_clip
 def test_decoded_and_total_source_duration_are_both_recorded():
     with tempfile.TemporaryDirectory() as folder:
         _run_id, _state, metrics = run_with(math.inf, folder)
