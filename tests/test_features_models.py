@@ -8,7 +8,7 @@ import pytest
 
 from watchverify.core import FEATURE_SCHEMA_VERSION
 from watchverify.features import (CLIP_COLUMNS, STRIDE_S, WINDOW_S, WindowAggregator,
-                                  clip_descriptor, windows)
+                                  aggregator_for, clip_descriptor, sampling_supported, windows)
 
 
 def frame(n=1, value=0.5):
@@ -164,6 +164,34 @@ def test_continuity_is_reported_so_a_run_cannot_be_counted_across_a_gap():
     times = list(np.arange(0, 6, 0.1)) + list(np.arange(7.0, 13, 0.1))
     across = _runtime(_sequence(times, seed=5))
     assert any(not w.continuous for w in across[1:]), "the window after a gap is not a continuation"
+
+
+# --- the window rules follow the sampling rate -------------------------------
+
+
+def test_the_default_rate_reproduces_the_fixed_gap_tolerance():
+    """Ten frames per second must behave exactly as the hand-set defaults did."""
+    aggregator = aggregator_for(10)
+    assert aggregator.max_gap_s == pytest.approx(0.5)
+
+
+def test_a_rate_too_low_to_fill_a_window_is_not_supported():
+    assert not sampling_supported(1) and not sampling_supported(2)
+    assert sampling_supported(5) and sampling_supported(10) and sampling_supported(20)
+
+
+def test_a_low_rate_no_longer_makes_every_frame_look_like_a_gap():
+    """The silent failure: at 1 fps a fixed 0.5 s limit cleared history on every frame."""
+    assert WindowAggregator().max_gap_s < 1.0, "the fixed default cannot tolerate 1 fps"
+    assert _feed(WindowAggregator(), np.arange(0, 12, 1.0)) == []
+    assert _feed(aggregator_for(1), np.arange(0, 12, 1.0)) != []
+
+
+def test_a_sparsely_observed_window_is_not_summarised_as_if_it_were_full():
+    """Coverage floor: two thirds of the frames missing is not a five-second summary."""
+    aggregator = aggregator_for(10)
+    sparse = np.round(np.arange(0, 12, 0.45), 2)
+    assert _feed(aggregator, sparse) == []
 
 
 # --- card-driven loading ----------------------------------------------------

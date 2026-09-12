@@ -6,7 +6,8 @@ import cv2
 from . import jobs
 from .perception import PoseEstimator,VideoExport,frames,video_info,sha256
 from .core import Tracker,FeatureBuffer,RuleDetector,IncidentManager,FEATURE_NAMES
-from .features import WindowAggregator,ACTIVITY_SUSTAINED_WINDOWS,ACTIVITY_CLEAR_WINDOWS
+from .features import (aggregator_for,expected_samples,sampling_supported,WINDOW_S,STRIDE_S,
+                       ACTIVITY_SUSTAINED_WINDOWS,ACTIVITY_CLEAR_WINDOWS,MIN_WINDOW_SAMPLES)
 from .models import Models
 ROOT=Path(__file__).resolve().parents[1]
 BONES=[(11,12),(11,13),(13,15),(12,14),(14,16),(11,23),(12,24),(23,24),(23,25),(25,27),(24,26),(26,28)]
@@ -40,9 +41,25 @@ def run(run_id):
             for key in ('fall_hold','down_hold','recovery_hold'):
                 if f'{key}_s' in fall_card:timing[key]=float(fall_card[f'{key}_s'])
         rules=RuleDetector(**timing);metrics['rule_timing']=timing
-        activity_windows=WindowAggregator(*( [float(models.loaded['activity'][1].get('window_s',5.)),
-                                              float(models.loaded['activity'][1].get('stride_s',1.))]
-                                             if 'activity' in models.loaded else []))
+        activity_window_s,activity_stride_s=WINDOW_S,STRIDE_S
+        if 'activity' in models.loaded:
+            activity_card=models.loaded['activity'][1]
+            activity_window_s=float(activity_card.get('window_s',WINDOW_S));activity_stride_s=float(activity_card.get('stride_s',STRIDE_S))
+        activity_windows=aggregator_for(fps,activity_window_s,activity_stride_s)
+        metrics['activity_sampling']={'analysis_fps':fps,'window_s':activity_window_s,
+                                      'expected_samples_per_window':expected_samples(fps,activity_window_s),
+                                      'min_samples_per_window':activity_windows.min_samples,
+                                      'max_gap_s':activity_windows.max_gap_s}
+        # An analysis rate too low to fill a window cannot produce the input this model was
+        # fitted on. Saying so is the point: at one frame per second the branch used to
+        # treat every frame as a gap and emit nothing at all, with nothing to read anywhere.
+        if 'activity' in models.loaded and not sampling_supported(fps,activity_window_s):
+            models.loaded.pop('activity')
+            models.status['activity']=(f'Unavailable: {fps:g} fps puts only '
+                                       f'{expected_samples(fps,activity_window_s)} observations in a '
+                                       f'{activity_window_s:g}s window; at least {MIN_WINDOW_SAMPLES} are needed')
+            metrics['warnings'].append('activity_branch_disabled_for_analysis_rate')
+            jobs.update_job(run_id,model_status=models.status,model_disclosures=models.disclosures())
         manager=IncidentManager(run_id,config.get('recording_start'))
         db=sqlite3.connect(folder/'events.db');db.execute('CREATE TABLE IF NOT EXISTS revisions(event_id TEXT, revision INTEGER, payload TEXT, PRIMARY KEY(event_id,revision))')
         encoder=VideoExport(folder/'annotated.partial.mp4',info['width'],info['height'],info['fps'])

@@ -37,6 +37,19 @@ MIN_SAMPLES = 3
 # the timings they replaced (1 s of positives, 2 s of ordinary movement).
 ACTIVITY_SUSTAINED_WINDOWS = 2
 ACTIVITY_CLEAR_WINDOWS = 3
+# Gap tolerance belongs to the sampling rate, not to the clock. Four missed observations is
+# half a second at ten frames per second, which is the tolerance this was fixed at; below
+# that rate a fixed half-second meant every single frame looked like a gap and the branch
+# went silent without saying so.
+MAX_MISSED_SAMPLES = 4
+# A window must be mostly observed, not merely non-empty. On the current corpus every
+# emitted window already holds 46-50 of an expected 50, so this rejects nothing the app
+# does today; it exists so that footage with heavy dropout abstains instead of summarising
+# a handful of frames as if they were a full five seconds.
+MIN_WINDOW_COVERAGE = 0.6
+# Below this many observations a window cannot describe movement whatever the coverage, so
+# the branch declares itself unavailable rather than scoring a shape it was never fitted on.
+MIN_WINDOW_SAMPLES = 20
 STAT_NAMES = ('mean', 'std', 'p10', 'p50', 'p90')
 FRAME_COLUMNS = list(FEATURE_NAMES) + [n + '_valid' for n in FEATURE_NAMES]
 MOTION_COLUMNS = ('hip_speed_abs_mean', 'hip_speed_abs_max', 'angular_speed_abs_mean',
@@ -145,6 +158,31 @@ class WindowAggregator:
                                np.array([r[2] for r in rows]), np.array([r[3] for r in rows]),
                                np.array([r[4] for r in rows]), np.array([r[5] for r in rows]),
                                np.array([r[6] for r in rows]))
+
+
+def expected_samples(analysis_fps, window_s=WINDOW_S):
+    """Observations a fully observed window holds at this analysis rate."""
+    return int(round(float(window_s) * float(analysis_fps)))
+
+
+def sampling_supported(analysis_fps, window_s=WINDOW_S):
+    """Whether an analysis rate can populate a window densely enough to score it."""
+    return expected_samples(analysis_fps, window_s) >= MIN_WINDOW_SAMPLES
+
+
+def aggregator_for(analysis_fps, window_s=WINDOW_S, stride_s=STRIDE_S):
+    """A runtime aggregator whose gap and coverage rules follow the sampling rate.
+
+    At ten frames per second this reproduces the fixed defaults exactly; the point is that
+    it keeps meaning the same thing when the rate changes, instead of silently becoming
+    either unsatisfiable or meaningless.
+    """
+    interval = 1.0 / float(analysis_fps)
+    return WindowAggregator(window_s, stride_s,
+                            max_gap_s=(MAX_MISSED_SAMPLES + 1) * interval,
+                            min_samples=max(MIN_SAMPLES,
+                                            int(np.ceil(MIN_WINDOW_COVERAGE
+                                                        * expected_samples(analysis_fps, window_s)))))
 
 
 def windows(t, x, hip_speed, angular_speed, down, upright, quality,
