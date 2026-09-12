@@ -29,6 +29,14 @@ MAX_GAP_S = 0.5
 # guarantee, and the runtime raises it (see worker.py) because the model was fitted on
 # windows holding roughly fifty observations.
 MIN_SAMPLES = 3
+# How much evidence an activity alert needs, counted in windows rather than seconds. The
+# model card documents this rule to the reviewer and the evaluation scripts measure it, so
+# it lives here and is imported by training, evaluation and the worker alike: two
+# constants in two files that merely happen to agree is how the shipped rule and the
+# measured rule drifted apart in the first place. At a one-second stride these reproduce
+# the timings they replaced (1 s of positives, 2 s of ordinary movement).
+ACTIVITY_SUSTAINED_WINDOWS = 2
+ACTIVITY_CLEAR_WINDOWS = 3
 STAT_NAMES = ('mean', 'std', 'p10', 'p50', 'p90')
 FRAME_COLUMNS = list(FEATURE_NAMES) + [n + '_valid' for n in FEATURE_NAMES]
 MOTION_COLUMNS = ('hip_speed_abs_mean', 'hip_speed_abs_max', 'angular_speed_abs_mean',

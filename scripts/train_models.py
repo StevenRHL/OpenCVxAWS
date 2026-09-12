@@ -22,7 +22,8 @@ from sklearn.model_selection import StratifiedGroupKFold,cross_val_predict
 from sklearn.base import clone
 from sklearn.metrics import roc_auc_score,average_precision_score
 from watchverify.core import FEATURE_NAMES,FEATURE_SCHEMA_VERSION,RuleDetector
-from watchverify.features import CLIP_COLUMNS,WINDOW_S,STRIDE_S,windows
+from watchverify.features import (CLIP_COLUMNS,WINDOW_S,STRIDE_S,windows,
+                                  ACTIVITY_SUSTAINED_WINDOWS)
 from watchverify.evaluation import (load_posture_labels,frame_times,fall_ground_truth,
                                     replay,match_fall_events,aggregate,wilson_interval)
 ROOT=Path(__file__).resolve().parents[1]
@@ -49,10 +50,9 @@ CV_SEEDS=(0,1,2)
 # already fitted. An in-sample quantile is the defect that made the pilot's 21% validation
 # flag rate become 48% on test.
 ACTIVITY_TARGET_NORMAL_FLAG=.21
-# The worker emits `unusual_activity` only after ACTIVITY_SUSTAIN seconds of positive
-# windows, which at STRIDE_S=1.0 means two consecutive flagged windows. Clip-level metrics
-# must use that rule; "any single flagged window" is not what the application does.
-ACTIVITY_SUSTAINED_WINDOWS=2
+# Re-exported from watchverify.features, which the worker also reads, so the measured rule
+# and the shipped rule cannot be changed apart. Clip-level metrics must use it; "any single
+# flagged window" is not what the application does.
 
 # ---------------------------------------------------------------- splits
 
@@ -638,6 +638,9 @@ def activity_training():
         'release_cleared':None,
         'threshold_selection':f'out-of-fold clip-grouped scores on the training split, targeting {ACTIVITY_TARGET_NORMAL_FLAG:.0%} of ordinary windows flagged',
         'alert_rule':f'the application requires {ACTIVITY_SUSTAINED_WINDOWS} consecutive flagged windows; a single flagged window is not an alert',
+        # The same rule as a number the worker can read, so `alert_rule` cannot describe
+        # one thing to the reviewer while the application applies another.
+        'sustained_windows':ACTIVITY_SUSTAINED_WINDOWS,
         'training_source':'MNNIT retail clips, MediaPipe pose features, fixed-length windows',
         'label_scope':'scene level only — the clip label says a clip contains shoplifting, never who or when. Every window of a shoplifting clip inherits the clip label, so many positive windows contain no act at all.',
         'eligibility':f'single-person clips with pose coverage >= {MIN_CLIP_COVERAGE} and at least one full {WINDOW_S}s window',
