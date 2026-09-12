@@ -36,7 +36,9 @@ https://ai.google.dev/edge/mediapipe/solutions/vision/pose_landmarker
 A downloaded checkpoint is not a validated model.
 
 Every attempt appends a row to data/manifests/downloads.jsonl recording origin, revision,
-size, checksum and licence, as the project's provenance rule requires.
+size, checksum and licence, as the project's provenance rule requires. That file is
+tracked, so it shows as modified after setup on a fresh clone: that is the clone recording
+its own download, not a problem to fix.
 """
 from pathlib import Path
 import argparse, sys
