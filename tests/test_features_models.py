@@ -44,17 +44,30 @@ def test_a_sequence_shorter_than_one_window_yields_nothing():
 # --- the aggregator abstains rather than guessing ---------------------------
 
 def _feed(aggregator, times, track=1):
+    """Observation times at which the aggregator closed at least one interval."""
     emitted = []
     for t in times:
-        out = aggregator.update(track, t, np.full(12, 0.5), np.ones(12, bool), 0.1, 1.0, False, True, 0.9)
-        if out is not None:
+        for _ in aggregator.update(track, t, np.full(12, 0.5), np.ones(12, bool), 0.1, 1.0, False, True, 0.9):
             emitted.append(t)
     return emitted
 
 
+def _windows(aggregator, times, track=1):
+    emitted = []
+    for t in times:
+        emitted.extend(aggregator.update(track, t, np.full(12, 0.5), np.ones(12, bool), 0.1, 1.0, False, True, 0.9))
+    return emitted
+
+
 def test_no_score_before_a_full_window_exists():
+    """Silence through 4.9 s, not merely through 3 s.
+
+    The earlier version of this test stopped at 3 s and so could not see the runtime
+    emitting its first descriptor at 4.0 s — a window the training builder never produces.
+    """
     aggregator = WindowAggregator()
-    assert _feed(aggregator, np.arange(0, 3, 0.1)) == [], "must abstain on a partial window"
+    assert _feed(aggregator, np.arange(0, 5.0, 0.1)) == [], "must abstain on a partial window"
+    assert _feed(aggregator, [5.0]) == [5.0], "a complete window must score immediately"
 
 
 def test_a_score_appears_once_the_window_fills_and_then_respects_the_stride():
@@ -77,6 +90,78 @@ def test_reset_discards_a_persons_history():
     _feed(aggregator, np.arange(0, 12, 0.1))
     aggregator.reset(1)
     assert _feed(aggregator, [12.1, 12.2, 12.3]) == []
+
+
+# --- the app and the trainer build the same object ---------------------------
+#
+# These assert descriptor equality, not merely similar behaviour. The defect they close
+# was a runtime window that no training window could equal: it closed a second early and
+# included its own endpoint, so the shipped app fed the model an input shape that never
+# appeared in the corpus the model was fitted on.
+
+
+def _sequence(times, seed=0):
+    rng = np.random.default_rng(seed)
+    t = np.asarray(times, dtype=float)
+    return (t, rng.normal(size=(len(t), 24)), rng.normal(size=len(t)), rng.normal(size=len(t)),
+            rng.integers(0, 2, len(t)).astype(bool), rng.integers(0, 2, len(t)).astype(bool),
+            rng.random(len(t)))
+
+
+def _runtime(sequence, **kwargs):
+    t, x, hip, angular, down, upright, quality = sequence
+    aggregator = WindowAggregator(**kwargs)
+    emitted = []
+    for i in range(len(t)):
+        emitted.extend(aggregator.update(1, t[i], x[i][:12], x[i][12:], hip[i], angular[i],
+                                         down[i], upright[i], quality[i]))
+    return emitted
+
+
+def test_the_runtime_descriptor_equals_the_training_descriptor_on_regular_timing():
+    sequence = _sequence(np.arange(0, 12, 0.1))
+    offline = windows(*sequence)
+    live = _runtime(sequence)
+    assert len(live) == len(offline) > 0
+    for window, (start, end, descriptor) in zip(live, offline):
+        assert (window.start, window.end) == (start, end)
+        assert np.array_equal(window.descriptor, descriptor), "runtime must feed the trained input"
+
+
+def test_the_two_paths_agree_on_irregular_timing_within_the_gap_limit():
+    rng = np.random.default_rng(7)
+    times = np.cumsum(rng.uniform(0.05, 0.45, 120))
+    sequence = _sequence(times, seed=3)
+    offline = windows(*sequence)
+    live = _runtime(sequence)
+    assert len(live) == len(offline) > 0
+    assert all(np.array_equal(w.descriptor, d) for w, (_, _, d) in zip(live, offline))
+
+
+def test_on_gapped_input_the_runtime_emits_a_strict_subset_of_training_windows():
+    """The one declared asymmetry: the trainer summarises across a hole, the app refuses.
+
+    Every window the app emits must still be one the trainer would have produced, so the
+    app is never fed a window shape the corpus does not contain.
+    """
+    times = list(np.arange(0, 6, 0.1)) + list(np.arange(7.0, 13, 0.1))
+    sequence = _sequence(times, seed=5)
+    offline = windows(*sequence)
+    live = _runtime(sequence)
+    assert len(live) < len(offline), "a gap must cost the runtime windows"
+    by_start = {round(start, 6): descriptor for start, _, descriptor in offline}
+    for window in live:
+        assert round(window.start, 6) in by_start, "runtime emitted a window training never would"
+        assert np.array_equal(window.descriptor, by_start[round(window.start, 6)])
+
+
+def test_continuity_is_reported_so_a_run_cannot_be_counted_across_a_gap():
+    live = _runtime(_sequence(np.arange(0, 9, 0.1)))
+    assert [w.continuous for w in live] == [False] + [True] * (len(live) - 1)
+
+    times = list(np.arange(0, 6, 0.1)) + list(np.arange(7.0, 13, 0.1))
+    across = _runtime(_sequence(times, seed=5))
+    assert any(not w.continuous for w in across[1:]), "the window after a gap is not a continuation"
 
 
 # --- card-driven loading ----------------------------------------------------

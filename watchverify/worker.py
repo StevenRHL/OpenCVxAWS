@@ -76,11 +76,10 @@ def run(run_id):
                             # The activity model reads a window of recent movement, not one
                             # frame. Before a full ungapped window exists there is no score
                             # and the branch abstains rather than guessing.
-                            descriptor=activity_windows.update(track_id,t,feat['vector'],feat['feature_mask'],
-                                                               feat['hip_speed'],feat['angular_speed'],
-                                                               feat['down'],feat['upright'],feat['quality'])
-                            if descriptor is not None:
-                                activity=models.score('activity',descriptor)
+                            for window in activity_windows.update(track_id,t,feat['vector'],feat['feature_mask'],
+                                                                 feat['hip_speed'],feat['angular_speed'],
+                                                                 feat['down'],feat['upright'],feat['quality']):
+                                activity=models.score('activity',window.descriptor)
                             if fall and fall['positive']:
                                 decision=dict(feat,down=True,upright=False)
                         obs=rules.update(track_id,decision,t)
