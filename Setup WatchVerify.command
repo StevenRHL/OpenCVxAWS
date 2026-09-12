@@ -75,4 +75,7 @@ print 'Checking that this installation can actually run inference...'
   || fail 'the installation could not run inference (details above).'
 
 print '\nSetup finished and verified. Double-click Launch WatchVerify.command.'
+# The prompt is for the double-click case; it must not decide the exit status, which
+# `read` would otherwise set to 1 whenever this runs without a terminal.
 read 'reply?Press Enter to close.'
+exit 0
