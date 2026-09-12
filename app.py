@@ -72,7 +72,7 @@ def model_card(name: str) -> dict:
 def show_models():
     pose_ready = any((ROOT / "models" / f"pose_landmarker_{variant}.task").exists() for variant in ("lite", "full"))
     st.caption("POSE ESTIMATION")
-    st.write("Ready" if pose_ready else "Pose asset is being prepared")
+    st.write("Ready" if pose_ready else "Not installed · run Setup WatchVerify.command")
     for name, label in (("fall", "Fall classifier"), ("activity", "Activity model")):
         file = ROOT / "models" / f"{name}.json"
         st.caption(label.upper())
@@ -99,7 +99,9 @@ with st.sidebar:
     if uploaded is not None:
         st.caption(f"{uploaded.size / 1024**2:.1f} MB · stored locally when analysis starts")
     if not asset.exists():
-        st.caption(f"The {variant} pose asset must finish downloading before analysis can start.")
+        st.caption(f"The {variant} pose asset is not installed, so analysis cannot start. "
+                   "Quit the app, double-click Setup WatchVerify.command (it downloads the asset "
+                   "and verifies it), then launch again.")
     if st.button("Start analysis", type="primary", width="stretch", disabled=uploaded is None or busy or not asset.exists()):
         temporary = None
         try:

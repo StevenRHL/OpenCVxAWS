@@ -55,7 +55,7 @@ class PoseEstimator:
         self.presence_confidence=presence_confidence
         self.tracking_confidence=tracking_confidence
         asset=ROOT/'models'/f'pose_landmarker_{variant}.task'
-        if not asset.exists():raise FileNotFoundError('The pretrained pose model is missing. Run setup first.')
+        if not asset.exists():raise FileNotFoundError(f'The pretrained pose model {asset.name} is not installed. Run "Setup WatchVerify.command", or fetch it directly with: .venv/bin/python scripts/acquire_pose_assets.py')
         options=mp.tasks.vision.PoseLandmarkerOptions(base_options=mp.tasks.BaseOptions(model_asset_path=str(asset),delegate=mp.tasks.BaseOptions.Delegate.CPU),running_mode=mp.tasks.vision.RunningMode.VIDEO,num_poses=max_people,min_pose_detection_confidence=detection_confidence,min_pose_presence_confidence=presence_confidence,min_tracking_confidence=tracking_confidence,output_segmentation_masks=False)
         self.model=mp.tasks.vision.PoseLandmarker.create_from_options(options)
         self.asset_sha256=sha256(asset)
