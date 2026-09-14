@@ -34,6 +34,13 @@ def queue_view(timestamp):
                     st.warning(f"{len(result['skipped'])} candidate(s) skipped: "
                               + '; '.join(f"{s['candidate_id']} ({s['reason']})" for s in result['skipped']))
                 st.caption(f"Manifest: {result['manifest_path']}")
+                st.caption('To fold this export into a retrain (a separate, manual step outside '
+                          'this app — nothing here changes the installed model): run '
+                          '`python scripts/import_reviewed_exports.py`, fill in the exact fall '
+                          'timing it asks for in `data/raw/reviewed/labels.csv`, then '
+                          '`python scripts/prepare_owncam.py --corpus reviewed`, '
+                          '`python scripts/extract_features.py --source reviewed`, and '
+                          '`python scripts/train_models.py --fall-sources urfall,reviewed`.')
     candidates = review.list_candidates()
     if not candidates:
         st.info('No candidates yet. Add one from the Debugger, on a recorded observation or a '
@@ -76,15 +83,22 @@ def queue_view(timestamp):
 def _row_actions(candidate):
     candidate_id = candidate['candidate_id']
     run_id = candidate['run_id']
-    columns = st.columns(4)
+    primary, more = st.columns(2)
     if candidate['status'] == 'needs_annotation':
         ok, reason = review.eligibility(candidate)
-        with columns[0]:
-            if st.button('Mark ready', key=f"queue-ready-{candidate_id}", disabled=not ok, help=None if ok else reason):
+        with primary:
+            if st.button('Mark ready', key=f"queue-ready-{candidate_id}", disabled=not ok,
+                        help=None if ok else reason, width='stretch'):
                 review.set_candidate_status(run_id, candidate_id, 'ready_for_dataset_review')
                 st.rerun()
-        with columns[1]:
-            with st.popover('Correct label', width='stretch'):
+    elif candidate['status'] == 'excluded':
+        with primary:
+            if st.button('Restore', key=f"queue-restore-{candidate_id}", width='stretch'):
+                review.restore_candidate(run_id, candidate_id)
+                st.rerun()
+    with more:
+        with st.popover('More', width='stretch'):
+            if candidate['status'] == 'needs_annotation':
                 label = st.selectbox('Proposed label', sorted(review.PROPOSED_LABELS),
                                      index=sorted(review.PROPOSED_LABELS).index(candidate['proposed_label']),
                                      key=f"queue-label-{candidate_id}")
@@ -94,16 +108,11 @@ def _row_actions(candidate):
                     review.correct_candidate(run_id, candidate_id, proposed_label=label,
                                              visible_action_label=visible)
                     st.rerun()
-    if candidate['status'] != 'excluded':
-        with columns[2]:
-            if st.button('Remove', key=f"queue-remove-{candidate_id}"):
-                review.remove_candidate(run_id, candidate_id)
-                st.rerun()
-    else:
-        with columns[2]:
-            if st.button('Restore', key=f"queue-restore-{candidate_id}"):
-                review.restore_candidate(run_id, candidate_id)
-                st.rerun()
+                st.divider()
+            if candidate['status'] != 'excluded':
+                if st.button('Remove', key=f"queue-remove-{candidate_id}", width='stretch'):
+                    review.remove_candidate(run_id, candidate_id)
+                    st.rerun()
 
 
 def missed_interval_form():

@@ -104,6 +104,11 @@ SOURCE_LICENSE={
               'note':'Non-commercial academic research. NOT cleared for competition or commercial distribution.'},
     'owncam':{'license':'Own recording','release_cleared':True,
               'note':'Recorded locally by the project owner; cleared for release by the person who recorded it.'},
+    'reviewed':{'license':'Admin-curated from reviewed application footage','release_cleared':False,
+               'note':'Clips an admin exported from the Learning queue after reviewing an alert '
+                      '(see watchverify/review.py, scripts/import_reviewed_exports.py). Source '
+                      'footage may be third-party; not cleared for release until someone checks '
+                      'the original recording\'s own permissions.'},
 }
 
 def urfall_split(sequence_id):

@@ -27,8 +27,10 @@ NOT_LYING, TRANSITION, LYING = -1, 0, 1
 POSTURE_LABEL_FILES = {
     'urfall': ('data/raw/urfall/urfall-cam0-falls.csv', 'data/raw/urfall/urfall-cam0-adls.csv'),
     'owncam': ('data/raw/owncam/owncam-posture.csv',),
+    'reviewed': ('data/raw/reviewed/reviewed-posture.csv',),
 }
-PREPARED_BY_SOURCE = {'urfall': 'prepare_urfall.py', 'owncam': 'prepare_owncam.py'}
+PREPARED_BY_SOURCE = {'urfall': 'prepare_urfall.py', 'owncam': 'prepare_owncam.py',
+                      'reviewed': 'prepare_owncam.py --corpus reviewed'}
 
 
 def load_posture_labels(root=ROOT, source='urfall'):

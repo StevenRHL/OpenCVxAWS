@@ -127,23 +127,23 @@ def dashboard_view(timestamp):
         st.caption('Newest recorded updates first. Observation entries show the first alert time; their review and outcome reflect the latest saved record.')
         if snapshot['legacy_runs']:
             st.caption('History is limited: older runs may lack status dates; incident revisions have no separate update time. Only the latest saved review is available. Missing times are not estimated.')
-        filters = st.columns(4)
-        urgency = filters[0].selectbox('Urgency', ['All', *PRIORITIES],
-                                      format_func=lambda x: PRIORITIES.get(x, x), key='feed-urgency')
-        kind = filters[1].selectbox('Update type', ['All', 'Observation', 'Analysis', 'Review'], key='feed-kind')
-        review = filters[2].selectbox('Review state', ['All', *REVIEW_LABELS],
-                                     format_func=lambda x: REVIEW_LABELS.get(x, x), key='feed-review')
-        date_mode = filters[3].selectbox('Update date', ['All dates', 'Today', 'Date range'], key='feed-date-mode')
-        show_ignored = st.checkbox('Show ignored observations', key='feed-show-ignored')
-        dates = None
-        today = datetime.now(tz).date()
-        if date_mode == 'Today':
-            dates = (today, today)
-        elif date_mode == 'Date range':
-            dates = st.date_input('Update date range', (today, today), key='feed-date-range')
-            if len(dates) != 2:
-                st.info('Choose the start and end dates.')
-                return
+        with st.popover('Filters', width='stretch'):
+            urgency = st.selectbox('Urgency', ['All', *PRIORITIES],
+                                   format_func=lambda x: PRIORITIES.get(x, x), key='feed-urgency')
+            kind = st.selectbox('Update type', ['All', 'Observation', 'Analysis', 'Review'], key='feed-kind')
+            review = st.selectbox('Review state', ['All', *REVIEW_LABELS],
+                                  format_func=lambda x: REVIEW_LABELS.get(x, x), key='feed-review')
+            date_mode = st.selectbox('Update date', ['All dates', 'Today', 'Date range'], key='feed-date-mode')
+            show_ignored = st.checkbox('Show ignored observations', key='feed-show-ignored')
+            dates = None
+            today = datetime.now(tz).date()
+            if date_mode == 'Today':
+                dates = (today, today)
+            elif date_mode == 'Date range':
+                dates = st.date_input('Update date range', (today, today), key='feed-date-range')
+                if len(dates) != 2:
+                    st.info('Choose the start and end dates.')
+                    return
         rows = filter_updates(snapshot['updates'], urgency=urgency, kind=kind, review=review, dates=dates,
                               tz=tz, show_ignored=show_ignored)
         st.caption(f'{len(rows)} updates match · Dates use {zone}. Undated entries appear last and are excluded by date filters.')

@@ -162,31 +162,28 @@ with st.sidebar:
 
 def downloads(job: dict, events: list[dict]):
     folder = jobs.run_dir(job["run_id"])
-    st.markdown("#### Take the results with you")
-    available = [("Annotated video", "annotated.mp4", "video/mp4"),
-                 ("Event list · JSON", "events.json", "application/json")]
-    first, second, third = st.columns(3)
-    for column, (label, name, mime) in zip((first, second), available):
-        file = folder / name
-        with column:
+    with st.popover("Take the results with you", width="stretch"):
+        available = [("Annotated video", "annotated.mp4", "video/mp4"),
+                     ("Event list · JSON", "events.json", "application/json")]
+        for label, name, mime in available:
+            file = folder / name
             if file.exists() and file.stat().st_size:
                 with file.open("rb") as handle:
                     st.download_button(label, handle, file_name=f"{job['run_id']}-{name}", mime=mime, width="stretch", key=f"download-{job['run_id']}-{name}")
             else:
                 st.button(label, disabled=True, width="stretch", key=f"missing-{job['run_id']}-{name}")
-    with third:
         # Built on request, not read from disk: it carries the review labels, which are
         # saved after the worker has already written its own copy of the event table.
         if events:
             st.download_button("Event table · CSV", jobs.events_csv(job["run_id"]), file_name=f"{job['run_id']}-events.csv", mime="text/csv", width="stretch", key=f"download-{job['run_id']}-events.csv")
         else:
             st.button("Event table · CSV", disabled=True, width="stretch", key=f"missing-{job['run_id']}-events.csv")
-    if events:
-        review_data = {"run_id": job["run_id"], "events": events,
-                       "reviews": jobs.get_reviews(job["run_id"]),
-                       "escalations": jobs.get_escalations(job["run_id"])}
-        st.download_button("Events with my review notes", json.dumps(review_data, indent=2), file_name=f"{job['run_id']}-review.json", mime="application/json", key=f"review-download-{job['run_id']}")
-    st.caption("Source position is the event’s location in the video. Analysis date/time records when this computer processed it. Annotated exports may be silent.")
+        if events:
+            review_data = {"run_id": job["run_id"], "events": events,
+                           "reviews": jobs.get_reviews(job["run_id"]),
+                           "escalations": jobs.get_escalations(job["run_id"])}
+            st.download_button("Events with my review notes", json.dumps(review_data, indent=2), file_name=f"{job['run_id']}-review.json", mime="application/json", key=f"review-download-{job['run_id']}")
+        st.caption("Source position is the event’s location in the video. Analysis date/time records when this computer processed it. Annotated exports may be silent.")
 
 
 def visibility_note(job: dict, status: str) -> None:

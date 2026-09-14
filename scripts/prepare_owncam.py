@@ -23,6 +23,7 @@ Times that are missing, out of order or past the end of the clip are rejected. N
 guessed or clipped into range — a wrong label is worse than a refused one (D025).
 """
 from pathlib import Path
+import argparse
 import csv
 import json
 import sys
@@ -32,13 +33,21 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from watchverify.evaluation import LYING, NOT_LYING, TRANSITION
 
 ROOT = Path(__file__).resolve().parents[1]
-PREPARED = ROOT / 'data/processed/owncam'
-RAW = ROOT / 'data/raw/owncam'
-LABELS = RAW / 'labels.csv'
-POSTURE = RAW / 'owncam-posture.csv'
 COLUMNS = ('clip', 'fall_start_s', 'fall_end_s', 'down_end_s', 'notes')
 FALL_PREFIX = 'fall'
 ORDINARY_PREFIX = 'adl'
+
+
+def paths(corpus):
+    """(prepared, raw, labels, posture) directories/files for one named corpus.
+
+    'owncam' is the original hand-recorded corpus; any other name (e.g. 'reviewed', built
+    by scripts/import_reviewed_exports.py) reuses this same labelling machinery on its own
+    data/raw/<corpus> and data/processed/<corpus> directories.
+    """
+    prepared = ROOT / 'data/processed' / corpus
+    raw = ROOT / 'data/raw' / corpus
+    return prepared, raw, raw / 'labels.csv', raw / f'{corpus}-posture.csv'
 
 
 def _seconds(row, column, clip):
@@ -54,11 +63,13 @@ def _seconds(row, column, clip):
     return value
 
 
-def clip_frames(clip):
-    """[(source_frame, output_t)] from the capture sidecar."""
-    sidecar = PREPARED / f'{clip}.json'
+def clip_frames(clip, prepared):
+    """[(source_frame, output_t)] from the preparation sidecar."""
+    sidecar = prepared / f'{clip}.json'
     if not sidecar.exists():
-        raise ValueError(f'{clip}: no sidecar at {sidecar.relative_to(ROOT)}; record it with capture_camera.py first')
+        raise ValueError(f'{clip}: no sidecar at {sidecar.relative_to(ROOT)}; prepare it first '
+                         '(capture_camera.py for a live recording, import_reviewed_exports.py '
+                         'for a reviewed clip)')
     card = json.loads(sidecar.read_text())
     rows = card.get('frames') or []
     if not rows:
@@ -100,16 +111,17 @@ def posture_codes(clip, fall_start, fall_end, down_end, frames):
     return codes
 
 
-def build():
-    if not LABELS.exists():
-        raise SystemExit(f'Write your clip labels to {LABELS.relative_to(ROOT)} first. Columns: {",".join(COLUMNS)}')
-    with LABELS.open(newline='') as handle:
+def build(corpus='owncam'):
+    prepared_dir, raw, labels, posture = paths(corpus)
+    if not labels.exists():
+        raise SystemExit(f'Write your clip labels to {labels.relative_to(ROOT)} first. Columns: {",".join(COLUMNS)}')
+    with labels.open(newline='') as handle:
         rows = list(csv.DictReader(handle))
     if not rows:
-        raise SystemExit(f'{LABELS.relative_to(ROOT)} has no rows')
+        raise SystemExit(f'{labels.relative_to(ROOT)} has no rows')
     missing = [column for column in COLUMNS[:4] if column not in (rows[0].keys() or {})]
     if missing:
-        raise SystemExit(f'{LABELS.relative_to(ROOT)} is missing columns: {missing}')
+        raise SystemExit(f'{labels.relative_to(ROOT)} is missing columns: {missing}')
     seen = set()
     prepared, failed = [], []
     table = []
@@ -121,7 +133,7 @@ def build():
             if clip in seen:
                 raise ValueError(f'{clip}: listed twice')
             seen.add(clip)
-            frames = clip_frames(clip)
+            frames = clip_frames(clip, prepared_dir)
             codes = posture_codes(clip, _seconds(row, 'fall_start_s', clip),
                                   _seconds(row, 'fall_end_s', clip),
                                   _seconds(row, 'down_end_s', clip), frames)
@@ -134,24 +146,30 @@ def build():
                              'duration_s': round(frames[-1][1], 3)})
         except ValueError as error:
             failed.append({'clip': clip, 'status': 'rejected', 'error': str(error)})
-    unlabelled = sorted(path.stem for path in PREPARED.glob('*.mp4') if path.stem not in seen)
+    unlabelled = sorted(path.stem for path in prepared_dir.glob('*.mp4') if path.stem not in seen)
     if failed:
         for failure in failed:
             print(json.dumps(failure), flush=True)
         raise SystemExit(f'{len(failed)} clip(s) rejected; nothing was written. Fix the rows above and re-run.')
-    RAW.mkdir(parents=True, exist_ok=True)
-    with POSTURE.open('w', newline='') as handle:
+    raw.mkdir(parents=True, exist_ok=True)
+    with posture.open('w', newline='') as handle:
         csv.writer(handle).writerows(table)
     report = {'clips': len(prepared), 'rows': len(table), 'prepared': prepared,
               'recorded_but_unlabelled': unlabelled,
-              'posture_table': str(POSTURE.relative_to(ROOT)),
+              'posture_table': str(posture.relative_to(ROOT)),
               'note': 'Codes follow the UR publisher convention: -1 not lying, 0 transition, 1 lying.'}
-    (RAW / '_label_report.json').write_text(json.dumps(report, indent=2))
+    (raw / '_label_report.json').write_text(json.dumps(report, indent=2))
     return report
 
 
 def main():
-    report = build()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--corpus', default='owncam',
+                        help="Which data/raw/<corpus> + data/processed/<corpus> pair to label. "
+                             "'owncam' (default) is the hand-recorded corpus; "
+                             "'reviewed' is admin-curated clips from import_reviewed_exports.py.")
+    corpus = parser.parse_args().corpus
+    report = build(corpus)
     for entry in report['prepared']:
         print(json.dumps(entry), flush=True)
     print(json.dumps({k: report[k] for k in ('clips', 'rows', 'recorded_but_unlabelled', 'posture_table')}, indent=2))

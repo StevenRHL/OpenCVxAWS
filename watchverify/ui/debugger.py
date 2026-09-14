@@ -44,7 +44,6 @@ def _action_key(prefix, run_id, event_id):
 def _ignore_controls(run_id, event_id):
     state = review.current_state(run_id, event_id)
     if state['ignored']:
-        st.caption('Ignored: removed from the default review queue, not judged false.')
         if st.button('Undo ignore', key=f"debugger-undo-{run_id}-{event_id}"):
             key, state_key = _action_key('undo', run_id, event_id)
             review.record_action(run_id, event_id, 'undo',
@@ -52,20 +51,22 @@ def _ignore_controls(run_id, event_id):
                                  idempotency_key=key)
             st.session_state.pop(state_key, None)
             st.rerun()
+        st.caption('Ignored: removed from the default review queue, not judged false.')
     else:
-        with st.form(f"debugger-ignore-{run_id}-{event_id}"):
-            reason = st.text_input('Reason (optional)')
-            if st.form_submit_button('Ignore this observation'):
-                key, state_key = _action_key('ignore', run_id, event_id)
-                review.record_action(run_id, event_id, 'ignore', note=reason, idempotency_key=key)
-                st.session_state.pop(state_key, None)
-                st.rerun()
+        with st.popover('Ignore', width='stretch'):
+            with st.form(f"debugger-ignore-{run_id}-{event_id}"):
+                reason = st.text_input('Reason (optional)')
+                if st.form_submit_button('Ignore this observation'):
+                    key, state_key = _action_key('ignore', run_id, event_id)
+                    review.record_action(run_id, event_id, 'ignore', note=reason, idempotency_key=key)
+                    st.session_state.pop(state_key, None)
+                    st.rerun()
 
 
 def _add_to_learning(run_id, event):
     event_id = event['event_id']
     pending_key = f"learn-pending-{run_id}-{event_id}"
-    with st.expander('Add to learning', expanded=bool(st.session_state.get(pending_key))):
+    with st.popover('Add to learning', width='stretch'):
         default_start = float(event.get('source_start_s') or 0)
         default_end = float(event.get('source_end_s') or default_start + 1)
         with st.form(f"debugger-learn-{run_id}-{event_id}"):
@@ -374,14 +375,18 @@ def debugger_view(timestamp, date_text):
         else:
             st.caption('No observation tags were saved for this event.')
         st.divider()
-        with st.form(f"debugger-review-{run_id}-{event_id}"):
-            label = st.selectbox('Your review', list(REVIEW_LABELS),
-                                 index=list(REVIEW_LABELS).index(review.get('label', 'unreviewed')),
-                                 format_func=lambda value: REVIEW_LABELS[value])
-            note = st.text_area('Notes (optional)', value=review.get('note', ''), max_chars=2000)
-            if st.form_submit_button('Save review', width='stretch'):
-                jobs.save_review(run_id, event_id, label, note)
-                st.rerun()
-        st.divider()
-        _ignore_controls(run_id, event_id)
-        _add_to_learning(run_id, event)
+        review_col, ignore_col, learn_col = st.columns(3)
+        with review_col:
+            with st.popover('Review', width='stretch'):
+                with st.form(f"debugger-review-{run_id}-{event_id}"):
+                    label = st.selectbox('Your review', list(REVIEW_LABELS),
+                                         index=list(REVIEW_LABELS).index(review.get('label', 'unreviewed')),
+                                         format_func=lambda value: REVIEW_LABELS[value])
+                    note = st.text_area('Notes (optional)', value=review.get('note', ''), max_chars=2000)
+                    if st.form_submit_button('Save review', width='stretch'):
+                        jobs.save_review(run_id, event_id, label, note)
+                        st.rerun()
+        with ignore_col:
+            _ignore_controls(run_id, event_id)
+        with learn_col:
+            _add_to_learning(run_id, event)

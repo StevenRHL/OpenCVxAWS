@@ -80,9 +80,15 @@ review candidate (existing, local)
   -> [proposed, opt-in] upload exported bundle to S3
   -> [proposed, opt-in] run AWS ML pass over the clip's frames
   -> results attached to the export bundle for a human to read
-  -> (still manual) folded into an owncam-style local source
-  -> (still manual) scripts/train_models.py retrain
+  -> (still manual) scripts/import_reviewed_exports.py folds it into an owncam-style
+     local 'reviewed' source, then scripts/prepare_owncam.py --corpus reviewed,
+     scripts/extract_features.py --source reviewed
+  -> (still manual) scripts/train_models.py --fall-sources urfall,reviewed retrain
 ```
+
+The last two steps are no longer hypothetical — `scripts/import_reviewed_exports.py` is the
+local, offline version of that hand-off (no AWS needed for it), added alongside this proposal.
+Everything above it in the sketch (S3 upload, AWS ML pass) is still just proposed.
 
 Every "proposed" step requires the two-layer opt-in gate above. Every step after it is exactly
 what already happens today.
