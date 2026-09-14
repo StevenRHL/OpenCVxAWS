@@ -66,6 +66,10 @@ def _run(monkeypatch, tmp_path, times, positives, duration_s, analysis_fps=10, c
         retired_ids = []
         gap_retired_ids = []
         ambiguous_ids = []
+        # One identity that never ends, so no evidence is ever released or carried.
+        retired_anchors = {}
+        new_ids = []
+        tracks = {}
 
         def update(self, poses, t):
             return [(1, poses[0])]

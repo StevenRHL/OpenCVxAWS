@@ -15,7 +15,7 @@ import json
 
 import numpy as np
 
-from .core import RuleDetector
+from .core import RuleDetector, EvidenceRelay
 
 ROOT = Path(__file__).resolve().parents[1]
 FALL_CATEGORIES = ('possible_fall', 'person_down')
@@ -103,6 +103,10 @@ def replay(cache_path, detector=None, score=None, threshold=None):
 
     events = []
     last_track = None
+    # Mirrors the worker's handover of unspent fall evidence across a renumbering. The cache
+    # stores no coordinates, so this matches on time alone and accepts every handover the
+    # worker would make and some it would reject on distance: the permissive bound.
+    relay = EvidenceRelay.for_detector(detector)
     for (frame_t, _index, _n_poses, _valid), reason in zip(attempts, reasons):
         key = round(float(frame_t), 6)
         rows = by_time.get(key, [])
@@ -115,7 +119,10 @@ def replay(cache_path, detector=None, score=None, threshold=None):
         for i in rows:
             track_id = int(track[i])
             if last_track is not None and track_id != last_track:
-                detector.reset(last_track)  # A new id means a new temporal history.
+                # A new id means a new temporal history, but a fall already in progress is
+                # not over just because the person was renumbered mid-air.
+                relay.park(detector.release(last_track))
+                relay.adopt_into(detector, track_id, key)
             last_track = track_id
             features = dict(t=key, down=bool(down[i]), upright=bool(upright[i]),
                             hip_speed=float(hip[i]), angular_speed=float(angular[i]))

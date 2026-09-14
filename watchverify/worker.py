@@ -4,13 +4,12 @@ import argparse,csv,json,os,sqlite3,time,traceback
 from datetime import datetime,timezone
 import cv2
 from . import jobs
-from .perception import PoseEstimator,VideoExport,frames,video_info,sha256
-from .core import Tracker,FeatureBuffer,RuleDetector,IncidentManager,FEATURE_NAMES
+from .perception import PoseEstimator,VideoExport,draw_skeleton,frames,video_info,sha256
+from .core import Tracker,FeatureBuffer,RuleDetector,IncidentManager,EvidenceRelay,anchor,FEATURE_NAMES
 from .features import (aggregator_for,expected_samples,sampling_supported,WINDOW_S,STRIDE_S,
                        ACTIVITY_SUSTAINED_WINDOWS,ACTIVITY_CLEAR_WINDOWS,MIN_WINDOW_SAMPLES)
 from .models import Models
 ROOT=Path(__file__).resolve().parents[1]
-BONES=[(11,12),(11,13),(13,15),(12,14),(14,16),(11,23),(12,24),(23,24),(23,25),(25,27),(24,26),(26,28)]
 
 def atomic_json(path,value):
     tmp=path.with_suffix(path.suffix+'.tmp');tmp.write_text(json.dumps(value,indent=2,allow_nan=False));tmp.replace(path)
@@ -41,6 +40,10 @@ def run(run_id):
             for key in ('fall_hold','down_hold','recovery_hold'):
                 if f'{key}_s' in fall_card:timing[key]=float(fall_card[f'{key}_s'])
         rules=RuleDetector(**timing);metrics['rule_timing']=timing
+        # Fall evidence outlives the identity that gathered it, for exactly as long as the
+        # detector would have accepted it anyway. Without this a dropout between the fall and
+        # the landing silences the fall completely; see EvidenceRelay.
+        relay=EvidenceRelay.for_detector(rules);metrics['carried_fall_evidence']=0
         activity_window_s,activity_stride_s=WINDOW_S,STRIDE_S
         if 'activity' in models.loaded:
             activity_card=models.loaded['activity'][1]
@@ -82,11 +85,19 @@ def run(run_id):
                 if t+1e-6>=next_t:
                     tic=time.perf_counter();poses=estimator.detect(bgr,t);metrics['pose_seconds']+=time.perf_counter()-tic
                     tracks=tracker.update(poses,t)
-                    for retired in tracker.retired_ids:buffers.reset(retired);rules.reset(retired);activity_windows.reset(retired);activity_run.pop(retired,None);activity_normal_run.pop(retired,None)
+                    for retired in tracker.retired_ids:
+                        # release, not reset: an identity that ended mid-fall hands its marker on.
+                        relay.park(rules.release(retired),tracker.retired_anchors.get(retired))
+                        buffers.reset(retired);activity_windows.reset(retired);activity_run.pop(retired,None);activity_normal_run.pop(retired,None)
+                    relay.expire(t)
                     metrics['track_gap_retirements']+=len(tracker.gap_retired_ids);metrics['ambiguous_track_retirements']+=len(tracker.ambiguous_ids)
                     metrics['analysed_frames']+=1;metrics['frames_with_pose']+=bool(poses);metrics['saturated_frames']+=len(poses)>=max_people
                     candidates=[];valid=[];latest=tracks
                     for track_id,pose in tracks:
+                        if track_id in tracker.new_ids:
+                            placed=tracker.tracks[track_id]
+                            if relay.adopt_into(rules,track_id,t,anchor(placed['centre'],placed['scale'])):
+                                metrics['carried_fall_evidence']+=1
                         feat=buffers.update(track_id,pose,t)
                         if feat is None:metrics['invalid_person_observations']+=1
                         else:metrics['valid_person_observations']+=1;valid.append(track_id)
@@ -143,12 +154,7 @@ def run(run_id):
                     persist(manager.step(candidates,t,valid));last_analysis=t;next_t=t+1/fps
                 # Do not carry stale skeletons across gaps. Decision-time overlay uses emitted state only.
                 overlay=bgr.copy()
-                if t-last_analysis<=.25:
-                    for track_id,pose in latest:
-                        for a,b in BONES:
-                            if min(pose[a,3],pose[b,3])>=.5:cv2.line(overlay,tuple(pose[a,:2].astype(int)),tuple(pose[b,:2].astype(int)),(102,224,192),2)
-                        visible=pose[pose[:,3]>=.5]
-                        if len(visible):cv2.putText(overlay,f'Person {track_id}',tuple(visible[0,:2].astype(int)),cv2.FONT_HERSHEY_SIMPLEX,.5,(102,224,192),1,cv2.LINE_AA)
+                if t-last_analysis<=.25:draw_skeleton(overlay,latest)
                 labels=[e['category'].replace('_',' ') for e in all_events.values() if e['status']=='active']
                 quality=' | '.join(dict.fromkeys(labels)) if labels else ('Observing - review candidates only' if latest else 'No usable pose - visibility unknown')
                 cv2.rectangle(overlay,(0,0),(overlay.shape[1],52),(21,27,36),-1)
