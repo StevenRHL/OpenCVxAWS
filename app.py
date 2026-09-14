@@ -8,24 +8,20 @@ import tempfile
 
 import streamlit as st
 
-from watchverify import jobs
+from watchverify import jobs, ui
 from watchverify.alerts import (ALERT_BRANCH, BRANCH_PROMPT, pending_alerts, primary_branch,
                                 secondary_fall_alerts, alerts_for_branch)
 
 ROOT = Path(__file__).resolve().parent
 st.set_page_config(page_title="WatchVerify · Video review", page_icon="◉", layout="wide")
+ui.style()
 st.markdown("""<style>
-.block-container {padding-top:2rem; padding-bottom:3rem; max-width:1400px}
-h1 {letter-spacing:-.05em; font-weight:650!important}
-h2,h3 {letter-spacing:-.025em}
-[data-testid="stSidebar"] {border-right:1px solid #dce5de}
-[data-testid="stMetric"] {background:#fff;border:1px solid #e0e8e2;border-radius:14px;padding:16px}
-.eyebrow {font-size:11px;font-weight:700;letter-spacing:.16em;color:#537261;margin-bottom:.4rem}
 .intro {font-size:18px;color:#587164;max-width:780px;line-height:1.6}
 .quiet {color:#687e71;font-size:14px}
 .step {background:white;border:1px solid #dde7df;border-radius:16px;padding:22px;min-height:175px}
 .step b {display:block;margin:12px 0 8px;font-size:17px}
 .step span {color:#687e71;font-size:14px;line-height:1.6}
+@media (max-width:860px) {.step {min-height:0}}
 </style>""", unsafe_allow_html=True)
 
 CATEGORY = {"possible_fall": "Possible fall", "person_down": "Person remains down",
