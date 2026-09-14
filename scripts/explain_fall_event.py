@@ -86,6 +86,13 @@ def diagnose(steps, events, detector, duration_s):
     alerted = [e for e in events if e['category'] in FALL_CATEGORIES]
     if alerted:
         first = alerted[0]
+        if 'evidence_carried_across_identity_change' in first.get('observations', []):
+            return (f"Fall alert emitted: {first['category']} at {first['t']:.3f}s, from "
+                    f"evidence carried across a pose dropout. The rapid-posture-change "
+                    f"marker was recorded under an earlier identity, survived the gap that "
+                    f"renumbered the person, and met a down frame on track "
+                    f"{first['track_id']}. Expect a visible break in the footage between "
+                    f"the two halves of this evidence.")
         return (f"Fall alert emitted: {first['category']} at {first['t']:.3f}s. The rule "
                 f"layer held both the rapid-posture-change marker and a down frame on one "
                 f"identity at the same moment.")

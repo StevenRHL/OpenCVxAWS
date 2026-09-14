@@ -10,6 +10,27 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Which landmark pairs are drawn as a limb. Shared so a live preview and a recorded export
+# show the same skeleton: an overlay that differs between the two would make the preview
+# misleading about what the analysis actually saw.
+BONES = [(11, 12), (11, 13), (13, 15), (12, 14), (14, 16), (11, 23), (12, 24), (23, 24),
+         (23, 25), (25, 27), (24, 26), (26, 28)]
+POSE_COLOUR = (102, 224, 192)
+
+
+def draw_skeleton(image, tracks, confidence=.5, colour=POSE_COLOUR):
+    """Draw tracked bodies onto `image` in place. `tracks` is [(track_id, pose)]."""
+    for track_id, pose in tracks:
+        for a, b in BONES:
+            if min(pose[a, 3], pose[b, 3]) >= confidence:
+                cv2.line(image, tuple(pose[a, :2].astype(int)), tuple(pose[b, :2].astype(int)),
+                         colour, 2)
+        visible = pose[pose[:, 3] >= confidence]
+        if len(visible):
+            cv2.putText(image, f'Person {track_id}', tuple(visible[0, :2].astype(int)),
+                        cv2.FONT_HERSHEY_SIMPLEX, .5, colour, 1, cv2.LINE_AA)
+    return image
+
 def sha256(path):
     h=hashlib.sha256()
     with open(path,'rb') as f:

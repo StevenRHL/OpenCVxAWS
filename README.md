@@ -111,11 +111,9 @@ actually more confident once they are down. It simply crosses its threshold a mo
 and that moment falls inside the blind gap.
 
 So this is a real miss, not a measurement artefact, and the documented rule applies: keep
-the installed model. It also exposes a limitation that affects the installed model too —
-**a fall can be missed entirely if body pose drops out between the fall itself and the
-landing.** That is now covered by `tests/test_fall_evidence_gap.py` so the behaviour cannot
-change unnoticed. The detection rules were deliberately left alone: changing them would
-invalidate the validation figures quoted above, which would have to be re-measured first.
+the installed model. It also exposed a limitation that affected the installed model too —
+**a fall could be missed entirely if body pose dropped out between the fall itself and the
+landing.** That limitation has since been fixed; see "The pose-dropout fall miss" below.
 
 Any sequence can be inspected the same way:
 
@@ -126,9 +124,84 @@ Any sequence can be inspected the same way:
 It prints the per-frame posture score against the threshold, the tracked identity, the
 rule state, and a plain-language reason for the alert or the silence.
 
+## The pose-dropout fall miss, and the fix
+
+The limitation above is closed. Fall evidence no longer belongs solely to the tracked
+identity that recorded it: when an identity ends while still holding an unspent
+rapid-posture-change marker, `EvidenceRelay` (in `watchverify/core.py`) offers that marker
+to the identity the tracker issues in its place.
+
+The relay widens nothing. The marker keeps its original timestamp, so the same
+`transition_window` that governs a fall on one unbroken identity governs a carried one —
+evidence that would have expired stays expired — and the alert still needs a down posture
+of its own. A replacement more than two torso lengths from where the old identity vanished
+is treated as a different person and refused, and evidence is consumed by the first
+identity that takes it, so one fall cannot seed alerts on several people. Model artifacts
+and thresholds are unchanged.
+
+An alert assembled this way carries the observation
+`evidence_carried_across_identity_change`, and the run reports `carried_fall_evidence` in
+its metrics, because a reviewer opening that clip will find a visible break between the
+movement and the landing and should be told to expect it.
+
+**What it changes, measured.** Changing detection rules invalidates the figures they were
+measured under, so the whole corpus was re-measured at the same threshold, dwell constants
+and splits. The numbers are in `models/fall.json` under `revalidation`, and summarised here:
+
+| | before | after |
+|---|---|---|
+| Validation: labelled falls matched / alerts | 6 of 6 / 11 | 6 of 6 / 12 |
+| Test: labelled falls matched / alerts | 6 of 6 / 9 | 6 of 6 / 10 |
+| All 30 fall sequences: no alert of any kind | 3 | 1 |
+| All 30 fall sequences: reported by the fast path | 27 | 29 |
+| 40 ADL sequences (fall negatives): alerts | 21 | 23 |
+
+Recall did not fall anywhere measured. Two labelled falls that previously produced no alert
+at all — `fall-13` and `fall-19` — are now reported, at a cost of two additional alerts
+across the forty fall-negative sequences. By the rule already recorded above for the model
+comparison — fewer false alarms is not worth missing more of what we are looking for —
+that trade is taken. `fall-25` is still silent, but for an unrelated reason: the model never
+calls a frame down on it at all (peak 0.053 against a 0.3 threshold), which is a posture
+-scoring miss and not an evidence gap.
+
+**Two caveats on where those numbers come from.** The whole-corpus row includes the training
+split, and is a diagnostic of the failure mode rather than an accuracy claim — the held-out
+splits happen to contain no sequence that ends before the two-second person-down fallback
+completes, which is the only situation in which this failure is fatal rather than merely
+slow. And the re-measurement runs through `evaluation.replay`, over feature caches whose
+identities were assigned at extraction time. Running the same UR Fall clips through the
+worker directly did not trigger the relay at all: on that path the pose dropouts are shorter
+than the one second the tracker will hold an identity across, so no renumbering occurs and
+there is nothing to carry. The relay is therefore a safety net on the worker path for this
+corpus, not a measured improvement to it. That the net is actually connected is pinned
+end-to-end by `tests/test_worker_evidence_relay.py`, which drives the real tracker through a
+blind span long enough to end an identity and asserts that the worker reports nothing
+without the relay and a labelled `possible_fall` with it.
+
+## Live camera preview
+
+**Live camera** in the sidebar opens a camera and runs the same detection stack on it, so
+you can see whether a given camera, height and angle produce usable body pose before
+recording with it. It is a preview only: nothing is written to disk, no analysis is created,
+and nothing reaches the admin dashboard. An empty timeline from a camera that never resolved
+a body is not evidence of a quiet room. Recorded analysis still runs on uploaded files.
+
+## Admin dashboard
+
+**Admin dashboard** collects every observation awaiting a decision across every analysis
+into one queue, and cuts each one out of its recording so the clip opens on the incident
+instead of on minute zero — five seconds before the event by default, since a clip that
+starts on the alert shows the consequence and not the cause. Deciding there writes to the
+same append-only escalation log as the per-analysis prompt, so the two views cannot disagree
+about what was decided. It contacts nobody.
+
 ## Project files
 
-`app.py`: interface. `watchverify/`: processing and storage. `models/`: installed artifacts
-and cards. `scripts/`: acquisition, preparation, training and verification tools.
+`app.py`: the upload-and-review interface. `pages/`: the admin dashboard and the live
+camera preview, reached from the sidebar. `watchverify/`: processing and storage —
+`core.py` (geometry, tracking, rules, the evidence relay), `worker.py` (one analysis run),
+`incidents.py` (the cross-run queue and per-incident clips), `live.py` (camera preview),
+`ui.py` (the look shared by every page). `models/`: installed artifacts and cards.
+`scripts/`: acquisition, preparation, training and verification tools.
 `data/manifests/`: what was downloaded, prepared and split. `outputs/`: saved analyses.
 Handoff, architecture and decision notes live with the build machine's working documents.
