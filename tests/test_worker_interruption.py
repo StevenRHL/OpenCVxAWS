@@ -39,8 +39,14 @@ def test_interruption_preserves_evidence_and_retry_uses_new_run(tmp_path, monkey
         def detect(self, frame, t): return [standing_pose()]
     monkeypatch.setattr(worker, "PoseEstimator", Pose)
     class Rules:
+        # `transition_window` and `release` are part of the detector contract the worker
+        # relies on to carry fall evidence across a renumbering; this fixture never ends an
+        # identity, so it releases nothing.
+        transition_window = 2.
         def __init__(self, **kwargs): pass
         def reset(self, track): pass
+        def release(self, track): return None
+        def adopt(self, track, evidence, t): return False
         def update(self, track, features, t):
             return [dict(category="person_down", score=1., observations=["fixture_down"])]
     monkeypatch.setattr(worker, "RuleDetector", Rules)

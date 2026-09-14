@@ -1,4 +1,4 @@
-"""How a short blind span destroys fall evidence, and the tool that reports it.
+"""How a short blind span destroys fall evidence, and how the relay carries it across.
 
 Recorded after the `fall-01` smoke discrepancy: the Extra Trees fall challenger emitted no
 alert on a sequence the installed model alerted on. The cause is not posture recognition —
@@ -6,8 +6,13 @@ the challenger scores the person on the ground higher than the incumbent does. I
 the challenger crosses its threshold a fraction later, on the far side of a pose dropout
 that ends the tracked identity and takes the rapid-posture-change marker with it.
 
-These tests pin that behaviour so it cannot change silently. They describe the rule layer,
-not fall accuracy on any corpus.
+`EvidenceRelay` closes that hole. A marker released by a retired identity is offered to the
+identity that replaces it, under the detector's own `transition_window` and a proximity
+check, so a fall split by a dropout is reported instead of silently lost. The incumbent
+model escaped this by luck — its threshold happened to be crossed one frame before the
+dropout — and these tests keep that luck from being load-bearing again.
+
+They describe the rule layer, not fall accuracy on any corpus.
 """
 import json
 from pathlib import Path
@@ -19,7 +24,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'scripts'))
 
-from watchverify.core import RuleDetector
+from watchverify.core import EvidenceRelay, RuleDetector, anchor
 from explain_fall_event import diagnose, identity_changes, observation_gaps, trace
 
 
@@ -35,6 +40,15 @@ def falling(detector, track_id, start=0.0, step=0.1, motion=3.0):
     return emitted, start + 4 * step
 
 
+def landing(detector, track_id, start, frames=11, step=0.1):
+    """Frames of a person already on the ground, under a given identity."""
+    emitted = []
+    for i in range(frames):
+        t = start + i * step
+        emitted += detector.update(track_id, features(t, down=True), t)
+    return emitted
+
+
 def test_a_fall_seen_without_interruption_alerts():
     """The control: identical motion and landing on one identity does alert."""
     detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
@@ -43,34 +57,116 @@ def test_a_fall_seen_without_interruption_alerts():
     assert [e['category'] for e in emitted] == ['possible_fall']
 
 
-def test_a_blind_span_between_the_motion_and_the_landing_loses_the_fall():
-    """The marker lives on the identity, so an interruption discards the fall evidence.
+def test_the_detector_alone_cannot_follow_a_fall_across_a_renumbering():
+    """Why the relay exists: the marker lives on the identity that recorded it.
 
-    This is the `fall-01` failure in miniature: the person is on the ground for the rest of
-    the clip, so the marker can never be rebuilt, and the person_down fallback needs longer
-    than the sequence has left.
+    This is the `fall-01` failure in miniature. Held here deliberately — the detector is
+    per-identity by design and must stay that way, because carrying state across a
+    renumbering is a judgement about people, not about posture. The relay is where that
+    judgement is made, under bounds this class does not have.
     """
     detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
     _emitted, last = falling(detector, 1)
-    # Pose is lost; the tracker cannot re-associate across the gap and issues a new identity.
-    landing = last + 0.5
-    emitted = []
-    for i in range(11):
-        t = landing + i * 0.1
-        emitted += detector.update(2, features(t, down=True), t)
-    assert emitted == [], 'a fall split by a dropout currently produces no alert at all'
+    detector.reset(1)  # The tracker gives up on the identity outright.
+    assert landing(detector, 2, last + 0.5) == []
 
 
-def test_the_same_landing_still_alerts_once_the_person_down_dwell_is_reached():
-    """The fallback path is intact; on `fall-01` the sequence simply ends before it."""
+def test_the_relay_carries_the_fall_across_the_renumbering():
+    """The fix: released evidence reaches the identity that continues the fall."""
+    detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
+    relay = EvidenceRelay.for_detector(detector)
+    _emitted, last = falling(detector, 1)
+    relay.park(detector.release(1), anchor((100, 100), 50))
+    start = last + 0.5
+    assert relay.adopt_into(detector, 2, start, anchor((110, 130), 50))
+    assert [e['category'] for e in landing(detector, 2, start)] == ['possible_fall']
+
+
+def test_a_carried_alert_says_the_evidence_crossed_an_identity_change():
+    """A reviewer opening this alert will find a break in the footage; tell them first."""
+    detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
+    relay = EvidenceRelay.for_detector(detector)
+    _emitted, last = falling(detector, 1)
+    relay.park(detector.release(1))
+    relay.adopt_into(detector, 2, last + 0.5)
+    alert = landing(detector, 2, last + 0.5)[0]
+    assert 'evidence_carried_across_identity_change' in alert['observations']
+    assert 'rapid_posture_change' in alert['observations']
+
+
+def test_an_uninterrupted_alert_is_not_labelled_as_carried():
     detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
     _emitted, last = falling(detector, 1)
-    landing = last + 0.5
-    emitted = []
-    for i in range(25):
-        t = landing + i * 0.1
-        emitted += detector.update(2, features(t, down=True), t)
-    assert [e['category'] for e in emitted] == ['person_down']
+    alert = detector.update(1, features(last + 0.1, down=True), last + 0.1)[0]
+    assert 'evidence_carried_across_identity_change' not in alert['observations']
+
+
+def test_evidence_older_than_the_transition_window_is_not_carried():
+    """The relay buys continuity, never time. An expired marker stays expired."""
+    detector = RuleDetector(down_hold=2.0, fall_hold=0.0, transition_window=2.0)
+    relay = EvidenceRelay.for_detector(detector)
+    _emitted, last = falling(detector, 1)  # marker at 0.4s
+    relay.park(detector.release(1))
+    late = last + 2.5
+    assert not relay.adopt_into(detector, 2, late)
+    assert landing(detector, 2, late) == []
+
+
+def test_a_replacement_standing_somewhere_else_does_not_inherit_the_fall():
+    """Proximity is what makes this a continuation rather than a guess about people."""
+    detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
+    relay = EvidenceRelay.for_detector(detector)
+    _emitted, last = falling(detector, 1)
+    relay.park(detector.release(1), anchor((100, 100), 50))
+    start = last + 0.5
+    # Six torso lengths away: a different person, on the far side of the room.
+    assert not relay.adopt_into(detector, 2, start, anchor((400, 100), 50))
+    assert landing(detector, 2, start) == []
+
+
+def test_one_fall_cannot_seed_alerts_on_two_people():
+    """Evidence is consumed by the identity that takes it."""
+    detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
+    relay = EvidenceRelay.for_detector(detector)
+    _emitted, last = falling(detector, 1)
+    relay.park(detector.release(1))
+    start = last + 0.5
+    assert relay.adopt_into(detector, 2, start)
+    assert not relay.adopt_into(detector, 3, start)
+    assert relay.pending == 0
+
+
+def test_a_track_that_already_witnessed_its_own_fall_is_not_overwritten():
+    detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
+    relay = EvidenceRelay.for_detector(detector)
+    _first, last = falling(detector, 1)
+    relay.park(detector.release(1))
+    _second, own = falling(detector, 2, start=last + 0.2)
+    assert not relay.adopt_into(detector, 2, own + 0.1)
+
+
+def test_a_track_already_alerted_does_not_take_more_evidence():
+    detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
+    relay = EvidenceRelay.for_detector(detector)
+    _first, last = falling(detector, 1)
+    detector.update(1, features(last + 0.1, down=True), last + 0.1)  # fires possible_fall
+    assert detector.release(1) is None, 'a spent marker is not evidence of a second fall'
+
+
+def test_a_released_track_without_a_marker_carries_nothing():
+    detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
+    detector.update(1, features(0.0), 0.0)
+    assert detector.release(1) is None
+    assert detector.release(99) is None
+
+
+def test_expire_drops_evidence_the_detector_would_refuse():
+    detector = RuleDetector(down_hold=2.0, fall_hold=0.0, transition_window=2.0)
+    relay = EvidenceRelay.for_detector(detector)
+    _emitted, _last = falling(detector, 1)
+    relay.park(detector.release(1))
+    assert relay.expire(1.0) == 0 and relay.pending == 1
+    assert relay.expire(5.0) == 1 and relay.pending == 0
 
 
 def test_observation_gaps_reports_only_spans_the_rule_layer_forgets_across():
@@ -88,32 +184,49 @@ def test_identity_changes_names_the_frame_where_the_person_was_renumbered():
 # --- the recorded sequence, when the prepared corpus is present ---------------
 
 CACHE = ROOT / 'data/processed/features/urfall/fall-01.npz'
-CHALLENGER = ROOT / 'runs/model-comparison-20260911-extended-families/fall_challenger.joblib'
-needs_corpus = pytest.mark.skipif(
-    not (CACHE.exists() and CHALLENGER.exists()),
-    reason='needs the prepared UR Fall cache and the saved comparison artifacts')
+needs_cache = pytest.mark.skipif(
+    not CACHE.exists(), reason='needs the prepared UR Fall feature cache')
 
 
-@needs_corpus
-def test_fall_01_miss_is_attributed_to_the_dropout_and_not_to_posture_scoring():
+@needs_cache
+def test_fall_01_is_reported_at_an_operating_point_that_used_to_go_silent():
+    """The regression that started this, on the real sequence.
+
+    Threshold 0.8 is where the rejected challenger sat, and it is the operating point at
+    which `fall-01` produced nothing at all: pose is lost at 3.703s, the person is
+    renumbered at 4.204s, and the marker died in between. The person is on the ground at
+    0.97 confidence for the rest of the clip, so silence here was never a close call.
+    """
     import joblib
     card = json.loads((ROOT / 'models/fall.json').read_text())
-    incumbent = joblib.load(ROOT / 'models/fall.joblib')
-    challenger = joblib.load(CHALLENGER)
+    model = joblib.load(ROOT / 'models/fall.joblib')
 
-    _rows, incumbent_p, _s, incumbent_events, _a, _r, _d = trace(
-        CACHE, incumbent, card['threshold'], card)
-    rows, challenger_p, steps, challenger_events, attempts, reasons, detector = trace(
-        CACHE, challenger, 0.8, card)
-
-    assert [e['category'] for e in incumbent_events if e['category'] != 'recovery'] \
-        == ['possible_fall']
-    assert [e['category'] for e in challenger_events if e['category'] != 'recovery'] == []
-
-    # Not a recognition failure: the challenger is the more confident of the two once the
-    # person is on the ground. It is the operating point that lands on the wrong side.
-    assert challenger_p.max() >= incumbent_p.max()
+    rows, probabilities, steps, events, attempts, reasons, detector = trace(
+        CACHE, model, 0.8, card)
 
     assert observation_gaps(attempts, reasons, detector.max_gap) == [(3.703, 4.204)]
     assert identity_changes(rows) == [(4.204, 1, 2)]
-    assert 'rapid-posture-change marker' in diagnose(steps, challenger_events, detector, 5.305)
+    assert probabilities.max() >= 0.97, 'the model was never unsure the person was down'
+
+    falls = [e for e in events if e['category'] == 'possible_fall']
+    assert [e['t'] for e in falls] == [4.204], 'the fall is reported on the far side of the gap'
+    assert 'evidence_carried_across_identity_change' in falls[0]['observations']
+    assert 'carried across a pose dropout' in diagnose(steps, events, detector, 5.305)
+
+
+@needs_cache
+def test_the_installed_operating_point_is_unchanged_by_the_relay():
+    """The incumbent alerted before the dropout and must still alert at the same moment.
+
+    Its threshold of 0.3 is crossed at 3.603s, one frame before pose is lost, so the relay
+    has nothing to carry here. Pinning it keeps the fix from quietly moving the operating
+    point the installed model's validation figures were measured at.
+    """
+    import joblib
+    card = json.loads((ROOT / 'models/fall.json').read_text())
+    model = joblib.load(ROOT / 'models/fall.joblib')
+
+    _rows, _p, _steps, events, _a, _r, _d = trace(CACHE, model, card['threshold'], card)
+    falls = [e for e in events if e['category'] == 'possible_fall']
+    assert [e['t'] for e in falls] == [3.603]
+    assert 'evidence_carried_across_identity_change' not in falls[0]['observations']
