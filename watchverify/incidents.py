@@ -50,16 +50,16 @@ CATEGORY_TEXT = {
 }
 
 
-def clip_bounds(event: dict, duration_s: float | None,
-                lead_s: float = LEAD_S, tail_s: float = TAIL_S) -> tuple[float, float]:
+def clip_bounds_interval(interval: tuple[float | None, float | None], duration_s: float | None,
+                         lead_s: float = LEAD_S, tail_s: float = TAIL_S) -> tuple[float, float]:
     """The source interval to cut, padded and clamped to the recording that exists.
 
-    `source_end_s` is the last revision's timestamp, so an incident that ended because the
-    track was lost or the video stopped is already bounded by its own evidence. Padding is
-    added outside that, never inside it.
+    Padding is added outside the given interval, never inside it — an interval that already
+    ends where the evidence ends (track lost, video stopped) keeps that boundary exact.
     """
-    start = float(event.get("source_start_s") or 0.0)
-    end = float(event.get("source_end_s") or start)
+    raw_start, raw_end = interval
+    start = float(raw_start or 0.0)
+    end = float(raw_end if raw_end is not None else start)
     if end < start:
         end = start
     start = max(0.0, start - lead_s)
@@ -69,6 +69,18 @@ def clip_bounds(event: dict, duration_s: float | None,
     if end <= start:
         end = start + 1.0
     return start, min(end, start + MAX_CLIP_S)
+
+
+def clip_bounds(event: dict, duration_s: float | None,
+                lead_s: float = LEAD_S, tail_s: float = TAIL_S) -> tuple[float, float]:
+    """The source interval to cut, padded and clamped to the recording that exists.
+
+    `source_end_s` is the last revision's timestamp, so an incident that ended because the
+    track was lost or the video stopped is already bounded by its own evidence. Padding is
+    added outside that, never inside it.
+    """
+    return clip_bounds_interval((event.get("source_start_s"), event.get("source_end_s")),
+                                duration_s, lead_s, tail_s)
 
 
 def clip_path(run_id: str, event_id: str, lead_s: float = LEAD_S, tail_s: float = TAIL_S) -> Path:
@@ -98,25 +110,22 @@ def source_for_clip(run_id: str) -> Path | None:
     return source if source.exists() else None
 
 
-def build_clip(run_id: str, event: dict, lead_s: float = LEAD_S, tail_s: float = TAIL_S,
-               force: bool = False) -> Path | None:
-    """Cut this incident out of its recording. Returns the clip, or None if it cannot.
+def build_clip_interval(run_id: str, interval: tuple[float | None, float | None], key: str,
+                        lead_s: float = LEAD_S, tail_s: float = TAIL_S,
+                        force: bool = False) -> Path | None:
+    """Cut an arbitrary source interval out of a recording, keyed by an arbitrary string.
 
-    Cached: an incident's interval does not change once the run has finished, so a clip that
-    already exists at this padding is reused. Written to a partial name and renamed on
-    success, so an interrupted cut can never be served as a complete one.
+    `build_clip` is the event-shaped convenience wrapper around this; a learning-queue
+    candidate for a missed interval has no event dict, so it calls this directly.
     """
-    event_id = event.get("event_id")
-    if not event_id:
-        return None
-    target = clip_path(run_id, event_id, lead_s, tail_s)
+    target = clip_path(run_id, key, lead_s, tail_s)
     if target.exists() and target.stat().st_size and not force:
         return target
     origin = source_for_clip(run_id)
     if origin is None:
         return None
     duration = (jobs.get_job(run_id).get("media") or {}).get("duration_s")
-    start, end = clip_bounds(event, duration, lead_s, tail_s)
+    start, end = clip_bounds_interval(interval, duration, lead_s, tail_s)
     target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_name(f"{target.stem}.partial.mp4")
     encoder = None
@@ -154,6 +163,21 @@ def build_clip(run_id: str, event: dict, lead_s: float = LEAD_S, tail_s: float =
         return None
     partial.replace(target)
     return target
+
+
+def build_clip(run_id: str, event: dict, lead_s: float = LEAD_S, tail_s: float = TAIL_S,
+               force: bool = False) -> Path | None:
+    """Cut this incident out of its recording. Returns the clip, or None if it cannot.
+
+    Cached: an incident's interval does not change once the run has finished, so a clip that
+    already exists at this padding is reused. Written to a partial name and renamed on
+    success, so an interrupted cut can never be served as a complete one.
+    """
+    event_id = event.get("event_id")
+    if not event_id:
+        return None
+    return build_clip_interval(run_id, (event.get("source_start_s"), event.get("source_end_s")),
+                               event_id, lead_s, tail_s, force)
 
 
 def describe(run_id: str, job: dict, event: dict, decided: bool) -> dict:

@@ -76,9 +76,10 @@ def test_the_relay_carries_the_fall_across_the_renumbering():
     detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
     relay = EvidenceRelay.for_detector(detector)
     _emitted, last = falling(detector, 1)
-    relay.park(detector.release(1), anchor((100, 100), 50))
+    relay.park(detector.release(1), anchor((100, 100), 50), track_id=1)
     start = last + 0.5
-    assert relay.adopt_into(detector, 2, start, anchor((110, 130), 50))
+    took, handover = relay.adopt_into(detector, 2, start, anchor((110, 130), 50))
+    assert took and handover == {'old_track_id': 1, 'released_at': last}
     assert [e['category'] for e in landing(detector, 2, start)] == ['possible_fall']
 
 
@@ -87,8 +88,9 @@ def test_a_carried_alert_says_the_evidence_crossed_an_identity_change():
     detector = RuleDetector(down_hold=2.0, fall_hold=0.0)
     relay = EvidenceRelay.for_detector(detector)
     _emitted, last = falling(detector, 1)
-    relay.park(detector.release(1))
-    relay.adopt_into(detector, 2, last + 0.5)
+    relay.park(detector.release(1), track_id=1)
+    took, handover = relay.adopt_into(detector, 2, last + 0.5)
+    assert took and handover['old_track_id'] == 1
     alert = landing(detector, 2, last + 0.5)[0]
     assert 'evidence_carried_across_identity_change' in alert['observations']
     assert 'rapid_posture_change' in alert['observations']
@@ -108,7 +110,7 @@ def test_evidence_older_than_the_transition_window_is_not_carried():
     _emitted, last = falling(detector, 1)  # marker at 0.4s
     relay.park(detector.release(1))
     late = last + 2.5
-    assert not relay.adopt_into(detector, 2, late)
+    assert relay.adopt_into(detector, 2, late) == (False, None)
     assert landing(detector, 2, late) == []
 
 
@@ -120,7 +122,7 @@ def test_a_replacement_standing_somewhere_else_does_not_inherit_the_fall():
     relay.park(detector.release(1), anchor((100, 100), 50))
     start = last + 0.5
     # Six torso lengths away: a different person, on the far side of the room.
-    assert not relay.adopt_into(detector, 2, start, anchor((400, 100), 50))
+    assert relay.adopt_into(detector, 2, start, anchor((400, 100), 50)) == (False, None)
     assert landing(detector, 2, start) == []
 
 
@@ -131,8 +133,8 @@ def test_one_fall_cannot_seed_alerts_on_two_people():
     _emitted, last = falling(detector, 1)
     relay.park(detector.release(1))
     start = last + 0.5
-    assert relay.adopt_into(detector, 2, start)
-    assert not relay.adopt_into(detector, 3, start)
+    assert relay.adopt_into(detector, 2, start)[0]
+    assert relay.adopt_into(detector, 3, start) == (False, None)
     assert relay.pending == 0
 
 
@@ -142,7 +144,7 @@ def test_a_track_that_already_witnessed_its_own_fall_is_not_overwritten():
     _first, last = falling(detector, 1)
     relay.park(detector.release(1))
     _second, own = falling(detector, 2, start=last + 0.2)
-    assert not relay.adopt_into(detector, 2, own + 0.1)
+    assert relay.adopt_into(detector, 2, own + 0.1) == (False, None)
 
 
 def test_a_track_already_alerted_does_not_take_more_evidence():

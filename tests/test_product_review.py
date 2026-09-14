@@ -20,7 +20,9 @@ def test_save_review_refreshes_count_and_survives_new_session(tmp_path, monkeypa
     jobs.update_job(run_id,status="completed")
     jobs.save_escalation(run_id,[event["event_id"]],"ambulance_not_called")
     page=Path(__file__).resolve().parents[1]/"app.py"
-    app=AppTest.from_file(str(page)).run()
+    app=AppTest.from_file(str(page))
+    app.session_state["page"] = "Analyses"
+    app.run()
     assert not app.exception
     assert next(m for m in app.metric if m.label=="Reviewed").value=="0"
     next(s for s in app.selectbox if s.label=="Your review").set_value("relevant")
@@ -29,7 +31,9 @@ def test_save_review_refreshes_count_and_survives_new_session(tmp_path, monkeypa
     assert not app.exception
     assert next(m for m in app.metric if m.label=="Reviewed").value=="1"
     assert jobs.get_reviews(run_id)[event["event_id"]]["note"]=="Regression review"
-    reopened=AppTest.from_file(str(page)).run()
+    reopened=AppTest.from_file(str(page))
+    reopened.session_state["page"] = "Analyses"
+    reopened.run()
     assert not reopened.exception
     assert next(m for m in reopened.metric if m.label=="Reviewed").value=="1"
     assert next(s for s in reopened.selectbox if s.label=="Your review").value=="relevant"
@@ -44,7 +48,9 @@ def prepared_run(tmp_path, monkeypatch, summary, events, status="completed"):
     (jobs.run_dir(run_id) / "events.json").write_text(json.dumps(events))
     jobs.update_job(run_id, status=status, summary=summary)
     page = Path(__file__).resolve().parents[1] / "app.py"
-    return run_id, AppTest.from_file(str(page)).run()
+    app = AppTest.from_file(str(page))
+    app.session_state["page"] = "Analyses"
+    return run_id, app.run()
 
 
 def test_a_quiet_timeline_states_the_time_that_could_not_be_observed(tmp_path, monkeypatch):

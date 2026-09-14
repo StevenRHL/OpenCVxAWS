@@ -47,6 +47,7 @@ def test_interruption_preserves_evidence_and_retry_uses_new_run(tmp_path, monkey
         def reset(self, track): pass
         def release(self, track): return None
         def adopt(self, track, evidence, t): return False
+        def gate_snapshot(self, track): return None
         def update(self, track, features, t):
             return [dict(category="person_down", score=1., observations=["fixture_down"])]
     monkeypatch.setattr(worker, "RuleDetector", Rules)

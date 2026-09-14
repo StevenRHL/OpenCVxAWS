@@ -11,6 +11,9 @@ import streamlit as st
 from watchverify import jobs, ui
 from watchverify.alerts import (ALERT_BRANCH, BRANCH_PROMPT, pending_alerts, primary_branch,
                                 secondary_fall_alerts, alerts_for_branch)
+from watchverify.ui.dashboard import dashboard_view, open_analysis
+from watchverify.ui.debugger import debugger_view, open_debugger
+from watchverify.ui.queue import queue_view
 
 ROOT = Path(__file__).resolve().parent
 st.set_page_config(page_title="WatchVerify · Video review", page_icon="◉", layout="wide")
@@ -81,6 +84,12 @@ def show_models():
 with st.sidebar:
     st.markdown("### ◉ WatchVerify")
     st.caption("LOCAL VIDEO REVIEW")
+    pending_page = st.session_state.pop("navigate_to", None)
+    if pending_page:
+        st.session_state["page"] = pending_page
+    page = st.radio("Navigation", ["Dashboard", "Analyses", "Debugger", "Learning queue"], key="page", label_visibility="collapsed")
+    if page == "Dashboard":
+        st.session_state["upload_view"] = False
     st.divider()
     st.markdown("#### Analyse a video")
     uploaded = st.file_uploader("Choose a video", type=["mp4", "mov", "avi", "mkv", "webm"], help="Your file stays on this computer. The decoder checks compatibility before analysis.")
@@ -109,6 +118,7 @@ with st.sidebar:
                                          original_name=uploaded.name)
             jobs.launch_job(identifier)
             st.session_state["selected_run"] = identifier
+            st.session_state["navigate_to"] = "Analyses"
             st.rerun()
         except (OSError, ValueError, RuntimeError) as error:
             st.error(str(error))
@@ -125,6 +135,7 @@ with st.sidebar:
                     identifier = jobs.create_job(sample, {"analysis_fps": fps, "max_people": int(people), "pose_variant": variant}, original_name=f"Research sample · {sample.name}")
                     jobs.launch_job(identifier)
                     st.session_state["selected_run"] = identifier
+                    st.session_state["navigate_to"] = "Analyses"
                     st.rerun()
                 except (OSError, ValueError, RuntimeError) as error:
                     st.error(str(error))
@@ -137,7 +148,9 @@ with st.sidebar:
         names = {job["run_id"]: f"{job.get('original_name', job['run_id'])} · {job['status']}" for job in all_jobs}
         if st.session_state.get("selected_run") not in choices:
             st.session_state["selected_run"] = choices[0]
-        selected = st.selectbox("Select an analysis", choices, key="selected_run", format_func=lambda identifier: names[identifier], label_visibility="collapsed")
+        selected = st.selectbox("Select an analysis", choices, key="selected_run",
+                                format_func=lambda identifier: names[identifier],
+                                label_visibility="collapsed", on_change=open_analysis)
     else:
         selected = None
         st.caption("Completed analyses will appear here.")
@@ -425,7 +438,14 @@ def analysis_view(run_id: str):
             st.code((folder / "worker.log").read_text(errors="replace")[-6000:])
 
 
-if selected:
+show_upload = st.session_state.get("upload_view") or (page == "Analyses" and not selected)
+if page == "Dashboard":
+    dashboard_view(timestamp)
+elif page == "Debugger":
+    debugger_view(timestamp, date_text)
+elif page == "Learning queue":
+    queue_view(timestamp)
+elif selected and not show_upload:
     analysis_view(selected)
 else:
     st.markdown('<div class="eyebrow">SEE THE MOMENT. REVIEW THE CONTEXT.</div>', unsafe_allow_html=True)

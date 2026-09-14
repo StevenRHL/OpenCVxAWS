@@ -275,6 +275,20 @@ class RuleDetector:
     def reset(self, track_id):
         self._states.pop(track_id, None)
 
+    def gate_snapshot(self, track_id):
+        """The live dwell/marker state for one track, for a debugger to show why an alert
+        has or hasn't fired yet. Reconstructed from the same `_states` entry `update()`
+        maintains; nothing here is persisted by `core.py` — a caller that wants a durable
+        record (worker.py) writes it into its own bounded per-frame trace.
+        """
+        s = self._states.get(track_id)
+        if s is None:
+            return None
+        seconds_in_fall_hold = (s['t'] - s['low']) if s['low'] is not None and s['t'] is not None else None
+        return dict(low=s['low'], transition=s['transition'], non_down=s['non_down'],
+                    upright=s['upright'], fall=s['fall'], down=s['down'], carried=s['carried'],
+                    seconds_in_fall_hold=seconds_in_fall_hold)
+
     def release(self, track_id):
         """Retire a track, handing back fall evidence it gathered but never got to use.
 
@@ -410,10 +424,10 @@ class EvidenceRelay:
         """A relay bounded by the detector it feeds, so the two cannot disagree."""
         return cls(detector.transition_window, max_distance)
 
-    def park(self, evidence, anchor=None):
+    def park(self, evidence, anchor=None, track_id=None):
         """Hold evidence released by a retired identity. Ignores nothing-to-carry."""
         if evidence is not None:
-            self._pending.append(dict(evidence=evidence, anchor=anchor))
+            self._pending.append(dict(evidence=evidence, anchor=anchor, track_id=track_id))
 
     def expire(self, t):
         """Drop evidence the rule layer would no longer accept. Returns how many went."""
@@ -424,10 +438,13 @@ class EvidenceRelay:
         return dropped
 
     def adopt_into(self, detector, track_id, t, anchor=None):
-        """Offer the nearest live evidence to a new identity. Returns whether it took it.
+        """Offer the nearest live evidence to a new identity.
 
         Nearest first so that with several falls in flight the replacement is matched to the
-        one it most plausibly continues rather than to whichever was released first.
+        one it most plausibly continues rather than to whichever was released first. Returns
+        `(took, handover)`: `took` is whether the evidence was accepted; `handover` is
+        `{'old_track_id':..., 'released_at':...}` identifying the identity it came from on
+        success, else `None`.
         """
         t = _time(t)
         self.expire(t)
@@ -438,10 +455,11 @@ class EvidenceRelay:
                 continue
             candidates.append((separation if separation is not None else math.inf, index))
         for _separation, index in sorted(candidates):
-            if detector.adopt(track_id, self._pending[index]['evidence'], t):
+            pending = self._pending[index]
+            if detector.adopt(track_id, pending['evidence'], t):
                 del self._pending[index]
-                return True
-        return False
+                return True, dict(old_track_id=pending['track_id'], released_at=pending['evidence']['released_at'])
+        return False, None
 
     @property
     def pending(self):
@@ -469,6 +487,16 @@ class IncidentManager:
     @staticmethod
     def _family(category):
         return 'person_safety' if category in ('possible_fall', 'person_down') else category
+
+    def active_event_for(self, track_id):
+        """Every event currently open for this track, keyed by family.
+
+        This is the actual causal link between a frame and the event it belonged to at the
+        moment it was processed — the join a debugger's trace needs, and the only place it
+        can come from truthfully (matching by time/track after the fact is a guess).
+        """
+        return {family: event_id for (candidate_track, family), event_id in self._active.items()
+               if candidate_track == track_id}
 
     def _snapshot(self, event, t, status, reason):
         event.update(revision=event['revision'] + 1, source_end_s=t, status=status, reason=reason)

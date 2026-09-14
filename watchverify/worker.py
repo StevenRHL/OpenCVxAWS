@@ -27,7 +27,7 @@ def run(run_id):
         info=video_info(source);metrics['source_duration_s']=float(info['duration_s'])
         if info['duration_s']>600:raise ValueError('Please use a video no longer than 10 minutes.')
         if max(info['width'],info['height'])>1920 or min(info['width'],info['height'])>1080:raise ValueError('Please use video at 1920×1080 or smaller.')
-        jobs.update_job(run_id,status='running',progress=0.,started_at_utc=datetime.now(timezone.utc).isoformat(),pid=os.getpid(),media=info,model_status=models.status,model_disclosures=models.disclosures())
+        jobs.update_job(run_id,status='running',progress=0.,started_at_utc=datetime.now(timezone.utc).isoformat(),pid=os.getpid(),media=info,model_status=models.status,model_disclosures=models.disclosures(),trace_schema_version=1)
         fps=float(config.get('analysis_fps',10));max_people=int(config.get('max_people',4));width=int(config.get('analysis_width',640))
         if not 1<=fps<=30 or not 1<=max_people<=8:raise ValueError('Invalid analysis configuration.')
         tracker=Tracker();buffers=FeatureBuffer()
@@ -65,6 +65,7 @@ def run(run_id):
             jobs.update_job(run_id,model_status=models.status,model_disclosures=models.disclosures())
         manager=IncidentManager(run_id,config.get('recording_start'))
         db=sqlite3.connect(folder/'events.db');db.execute('CREATE TABLE IF NOT EXISTS revisions(event_id TEXT, revision INTEGER, payload TEXT, PRIMARY KEY(event_id,revision))')
+        db.execute('CREATE TABLE IF NOT EXISTS event_frames(event_id TEXT, t REAL, track_id INTEGER, source TEXT, fall_score REAL, fall_threshold REAL, fall_positive INTEGER, fall_version TEXT, activity_score REAL, activity_threshold REAL, activity_positive INTEGER, activity_version TEXT, quality REAL, angle REAL, down INTEGER, gate_state TEXT, old_track_id INTEGER, handover_reason TEXT, PRIMARY KEY(event_id,t,track_id))')
         encoder=VideoExport(folder/'annotated.partial.mp4',info['width'],info['height'],info['fps'])
         def persist(revisions):
             for event in revisions:
@@ -73,6 +74,10 @@ def run(run_id):
         # Runs of consecutive windows, not elapsed seconds: a window that never closed is
         # absent evidence, and time alone cannot tell it apart from evidence against.
         next_t=0.;last_analysis=-999.;last_progress=-1.;activity_run={};activity_normal_run={}
+        # A handover is accepted before the event it will belong to necessarily exists yet
+        # (fall_hold still needs to elapse), so it is held here and attached to the first
+        # event_frames row actually written for that track, not to the literal handover frame.
+        handover_for_track={}
         sustained_windows=ACTIVITY_SUSTAINED_WINDOWS;clear_windows=ACTIVITY_CLEAR_WINDOWS
         if 'activity' in models.loaded:
             sustained_windows=int(models.loaded['activity'][1].get('sustained_windows',sustained_windows))
@@ -87,17 +92,17 @@ def run(run_id):
                     tracks=tracker.update(poses,t)
                     for retired in tracker.retired_ids:
                         # release, not reset: an identity that ended mid-fall hands its marker on.
-                        relay.park(rules.release(retired),tracker.retired_anchors.get(retired))
+                        relay.park(rules.release(retired),tracker.retired_anchors.get(retired),track_id=retired)
                         buffers.reset(retired);activity_windows.reset(retired);activity_run.pop(retired,None);activity_normal_run.pop(retired,None)
                     relay.expire(t)
                     metrics['track_gap_retirements']+=len(tracker.gap_retired_ids);metrics['ambiguous_track_retirements']+=len(tracker.ambiguous_ids)
                     metrics['analysed_frames']+=1;metrics['frames_with_pose']+=bool(poses);metrics['saturated_frames']+=len(poses)>=max_people
-                    candidates=[];valid=[];latest=tracks
+                    candidates=[];valid=[];latest=tracks;frame_traces=[]
                     for track_id,pose in tracks:
                         if track_id in tracker.new_ids:
                             placed=tracker.tracks[track_id]
-                            if relay.adopt_into(rules,track_id,t,anchor(placed['centre'],placed['scale'])):
-                                metrics['carried_fall_evidence']+=1
+                            took,handover=relay.adopt_into(rules,track_id,t,anchor(placed['centre'],placed['scale']))
+                            if took:metrics['carried_fall_evidence']+=1;handover_for_track[track_id]=handover
                         feat=buffers.update(track_id,pose,t)
                         if feat is None:metrics['invalid_person_observations']+=1
                         else:metrics['valid_person_observations']+=1;valid.append(track_id)
@@ -146,12 +151,38 @@ def run(run_id):
                         row={'t':t,'track_id':track_id,'valid':feat is not None,'fall_model':fall,'activity_model':activity}
                         if feat is not None:row.update({'features':feat['vector'].tolist(),'feature_mask':feat['feature_mask'].tolist(),'quality':float(feat['quality']),'angle':float(feat['angle']),'down':bool(feat['down'])})
                         predictions.write(json.dumps(row,allow_nan=False)+'\n')
+                        # Buffered, not written yet: the event this frame belongs to is only known
+                        # once `manager.step()` below has processed this frame's candidates.
+                        frame_traces.append({'track_id':track_id,'fall':fall,'activity':activity,
+                            'quality':feat['quality'] if feat is not None else None,
+                            'angle':feat['angle'] if feat is not None else None,
+                            'down':feat['down'] if feat is not None else None,
+                            'gate_state':rules.gate_snapshot(track_id)})
                     if valid:
                         if unobserved_start is not None:unobserved.append([round(unobserved_start,3),round(t,3)]);unobserved_start=None
                     else:
                         metrics['frames_without_usable_person']+=1
                         if unobserved_start is None:unobserved_start=t
-                    persist(manager.step(candidates,t,valid));last_analysis=t;next_t=t+1/fps
+                    persist(manager.step(candidates,t,valid))
+                    for trace in frame_traces:
+                        events_for_track=manager.active_event_for(trace['track_id'])
+                        handover=handover_for_track.get(trace['track_id']) if events_for_track else None
+                        for event_id in events_for_track.values():
+                            fall,activity,gate=trace['fall'],trace['activity'],trace['gate_state']
+                            db.execute('INSERT OR IGNORE INTO event_frames (event_id,t,track_id,source,fall_score,fall_threshold,fall_positive,fall_version,activity_score,activity_threshold,activity_positive,activity_version,quality,angle,down,gate_state,old_track_id,handover_reason) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+                                (event_id,t,trace['track_id'],'live',
+                                 fall.get('score') if fall else None,fall.get('threshold') if fall else None,
+                                 fall.get('positive') if fall else None,fall.get('version') if fall else None,
+                                 activity.get('score') if activity else None,activity.get('threshold') if activity else None,
+                                 activity.get('positive') if activity else None,activity.get('version') if activity else None,
+                                 trace['quality'],trace['angle'],trace['down'],
+                                 json.dumps(gate,allow_nan=False) if gate else None,
+                                 handover['old_track_id'] if handover else None,
+                                 'evidence_relay' if handover else None))
+                        if events_for_track and handover is not None:
+                            handover_for_track.pop(trace['track_id'],None)  # attached once
+                    db.commit()
+                    last_analysis=t;next_t=t+1/fps
                 # Do not carry stale skeletons across gaps. Decision-time overlay uses emitted state only.
                 overlay=bgr.copy()
                 if t-last_analysis<=.25:draw_skeleton(overlay,latest)

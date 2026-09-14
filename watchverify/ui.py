@@ -41,7 +41,7 @@ html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
 [data-testid="stAppViewContainer"] {{min-height:100vh}}
 /* Streamlit reserves a tall empty header strip above the first element. */
 [data-testid="stHeader"] {{height:2.5rem; background:transparent}}
-.block-container {{padding-top:1rem; padding-bottom:2.5rem; max-width:1240px}}
+.block-container {{padding-top:4rem; padding-bottom:2.5rem; max-width:1240px}}
 
 h1 {{letter-spacing:-.05em; font-weight:650!important; margin-bottom:.2rem}}
 h2, h3 {{letter-spacing:-.025em}}

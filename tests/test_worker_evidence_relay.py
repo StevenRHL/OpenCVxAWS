@@ -55,7 +55,7 @@ def run_worker(monkeypatch, tmp_path, *, relay_enabled, reappear_at=REAPPEARS_AT
     if not relay_enabled:
         # Reproduce the behaviour before the relay existed without checking out old code:
         # evidence is still released, and nothing is ever allowed to take it up.
-        monkeypatch.setattr(worker.EvidenceRelay, 'adopt_into', lambda *a, **k: False)
+        monkeypatch.setattr(worker.EvidenceRelay, 'adopt_into', lambda *a, **k: (False, None))
 
     class Models:
         """No trained artifacts: the rule layer reads the geometric posture decision."""
