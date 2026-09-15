@@ -602,8 +602,52 @@ def mnnit_eligible():
     return eligible,excluded,exclusion_summary,assignment
 
 
+RETAILS_SPLIT_SALT='retails-split-v1'
+
+def retails_eligible():
+    """RetailS whole-track descriptors, built by scripts/prepare_retails.py.
+
+    Unlike MNNIT, labels here are genuinely per-person-track (RetailS's own ByteTrack
+    identity), not scene-level-only — see scripts/prepare_retails.py's docstring for the
+    extraction method and its documented deviations (no raw video, assumed 15 FPS, a
+    whole-track descriptor in place of the standard 5s sliding window because RetailS
+    clips are mostly shorter than that window).
+
+    `staged` tracks (acted shoplifting, same caveat as MNNIT: staged, not authentic) are
+    hash-split 75/25 into train/validation. `realworld` tracks (genuine incidents, only 56
+    of them) are held out of training entirely and always scored as validation — the
+    closest thing this project has to a real-deployment check for this branch.
+    """
+    cache=ROOT/'data/processed/retails_activity.npz'
+    if not cache.exists():
+        return [],{'available':False}
+    d=np.load(cache,allow_pickle=False)
+    X,y,groups,split_source=d['X'],d['y'],d['groups'],d['split_source']
+    staged_idx=[i for i,s in enumerate(split_source) if s=='staged']
+    assignment={}
+    for label in (0,1):
+        members=sorted([groups[i] for i in staged_idx if y[i]==label],
+                       key=lambda g:hashlib.sha256(f'{RETAILS_SPLIT_SALT}:{g}'.encode()).hexdigest())
+        cut=round(len(members)*.75)
+        for index,group in enumerate(members):
+            assignment[group]='train' if index<cut else 'validation'
+    eligible=[]
+    for i in range(len(groups)):
+        group=str(groups[i]);label=int(y[i])
+        split='validation' if split_source[i]=='realworld' else assignment[group]
+        eligible.append({'source':group,'label':label,'windows':[X[i]],'split':split,
+                         'scene_label':'shoplifting' if label else 'normal',
+                         'source_dataset':f'retails_{split_source[i]}'})
+    summary={'available':True,'tracks':len(eligible),
+             'by_split_source':{name:int((split_source==name).sum()) for name in set(split_source.tolist())},
+             'fps_assumed':float(d['fps_assumed']),'license_note':str(d['license_note'])}
+    return eligible,summary
+
+
 def activity_training():
-    eligible,excluded,exclusion_summary,assignment=mnnit_eligible()
+    mnnit_rows,excluded,exclusion_summary,assignment=mnnit_eligible()
+    retails_rows,retails_summary=retails_eligible()
+    eligible=mnnit_rows+retails_rows
 
     def block(split):
         rows=[r for r in eligible if r['split']==split]
@@ -616,6 +660,7 @@ def activity_training():
         raise ValueError('Train and validation must both contain each class')
 
     tgroup=np.array([r['source'] for r in train_rows for _ in r['windows']])
+    vsource=np.array([r.get('source_dataset','mnnit') for r in validation_rows for _ in r['windows']])
 
     # Model selection runs on the training split only, by clip-grouped repeated CV. The
     # validation split is then a clean check of the chosen configuration rather than the
@@ -654,13 +699,34 @@ def activity_training():
     clip_labels=np.array([v[1] for v in per_clip.values()])
     clip_auc=float(roc_auc_score(clip_labels,clip_scores)) if len(np.unique(clip_labels))>1 else None
 
+    # RetailS validation entries are single-descriptor "clips" (one whole-track window,
+    # not a multi-window MNNIT-style clip; see retails_eligible()), so they can never
+    # satisfy the sustained-clip rule's run-length>=2 requirement regardless of score.
+    # Feeding them into sustained_clip_rule would silently deflate the shipped alert-rate
+    # claim rather than measure anything about them. Keep that rule on MNNIT clips only,
+    # and score RetailS validation rows as plain single-window classification instead.
+    mnnit_mask=np.array([not str(c).startswith('retails_') for c in vclip])
+    retails_mask=~mnnit_mask
+
     def point(threshold_value,provenance):
         flag=scores>=threshold_value
         tp=int((flag&(vy==1)).sum());fp=int((flag&(vy==0)).sum());fn=int(((~flag)&(vy==1)).sum())
-        return {'threshold':float(threshold_value),'provenance':provenance,'tp':tp,'fp':fp,'fn':fn,
+        result={'threshold':float(threshold_value),'provenance':provenance,'tp':tp,'fp':fp,'fn':fn,
                 'window_precision':tp/max(tp+fp,1),'window_recall':tp/max(tp+fn,1),
                 'flagged_normal_window_fraction':fp/max(int((vy==0).sum()),1),
-                'sustained_clip_rule':sustained_clip_rule(scores,vy,vclip,threshold_value)}
+                'sustained_clip_rule':sustained_clip_rule(scores[mnnit_mask],vy[mnnit_mask],
+                                                          [c for c,m in zip(vclip,mnnit_mask) if m],
+                                                          threshold_value)}
+        if retails_mask.any():
+            rflag=flag[retails_mask];ry=vy[retails_mask];rsplit=vsource[retails_mask]
+            result['retails_track_level']={
+                src:{'tracks':int((rsplit==src).sum()),
+                     'shoplifting_tracks':int(((rsplit==src)&(ry==1)).sum()),
+                     'shoplifting_tracks_flagged':int(((rsplit==src)&(ry==1)&rflag).sum()),
+                     'normal_tracks':int(((rsplit==src)&(ry==0)).sum()),
+                     'normal_tracks_flagged':int(((rsplit==src)&(ry==0)&rflag).sum())}
+                for src in sorted(set(rsplit.tolist()))}
+        return result
 
     # The curve is reported so a person can move the operating point; every row is a target
     # ordinary-window flag rate, read off out-of-fold training scores, then measured on
@@ -687,23 +753,41 @@ def activity_training():
         # The same rule as a number the worker can read, so `alert_rule` cannot describe
         # one thing to the reviewer while the application applies another.
         'sustained_windows':ACTIVITY_SUSTAINED_WINDOWS,
-        'training_source':'MNNIT retail clips, MediaPipe pose features, fixed-length windows',
-        'label_scope':'scene level only — the clip label says a clip contains shoplifting, never who or when. Every window of a shoplifting clip inherits the clip label, so many positive windows contain no act at all.',
-        'eligibility':f'single-person clips with pose coverage >= {MIN_CLIP_COVERAGE} and at least one full {WINDOW_S}s window',
+        'training_source':('MNNIT retail clips (MediaPipe pose, scene-level clip labels, fixed-length '
+                           'windows) plus RetailS whole-track descriptors (upstream COCO17 pose, genuine '
+                           'per-person-track labels; see docs/DATASETS.md and scripts/prepare_retails.py)'
+                           if retails_summary.get('available') else
+                           'MNNIT retail clips, MediaPipe pose features, fixed-length windows'),
+        'label_scope':('MNNIT: scene level only — the clip label says a clip contains shoplifting, never '
+                       'who or when; every window of a shoplifting clip inherits the clip label. RetailS: '
+                       'genuine per-person-track labels (majority of that track\'s frame-level ground '
+                       'truth), but frame-level ground truth is itself scene-wide — a bystander in the '
+                       'same frame as a concealment inherits the positive frame label.'),
+        'eligibility':(f'MNNIT: single-person clips with pose coverage >= {MIN_CLIP_COVERAGE} and at least '
+                       f'one full {WINDOW_S}s window. RetailS: any tracked person with >=3 usable feature '
+                       'rows, summarised as one whole-track descriptor (RetailS clips are mostly shorter '
+                       f'than the {WINDOW_S}s window; see scripts/prepare_retails.py).'),
         'not_proof_of_theft':'Flags motion resembling clips labelled shoplifting. It does not establish theft and requires human review.',
         # Read by the application and shown on the escalation prompt. A person deciding
         # whether to act on this alert must be told how often it fires on ordinary footage.
+        # These two figures describe MNNIT clips only (see sustained_clip_rule filtering
+        # above); RetailS validation performance is reported separately as
+        # retails_track_level, not folded into this clip-run-length rule it structurally
+        # cannot satisfy (each RetailS validation track is one single-window "clip").
         'expected_false_alert_rate':selected['sustained_clip_rule']['normal_clip_alert_rate'],
         'expected_detection_rate':selected['sustained_clip_rule']['clip_recall'],
         'alert_caveat':(
             f"In validation, {selected['sustained_clip_rule']['normal_clips_alerted']} of "
-            f"{selected['sustained_clip_rule']['normal_clips']} ordinary retail clips "
+            f"{selected['sustained_clip_rule']['normal_clips']} ordinary MNNIT retail clips "
             f"({selected['sustained_clip_rule']['normal_clip_alert_rate']:.0%}) raised an "
             'activity alert under the two-consecutive-window rule. This is a clip fraction, '
             'not an hourly rate or the probability this alert is correct. Results cover '
             'eligible single-person clips; clip labels do not identify who acted or when. '
-            'Movement does not establish theft. Performance on your camera is unknown.'),
-        'license_note':'MNNIT CC BY 4.0; cite DOI 10.17632/r3yjf35hzr.1',
+            'Movement does not establish theft. Performance on your camera is unknown. '
+            'See retails_track_level in the metrics file for the separate RetailS check, '
+            'including a small genuine (non-staged) incident sample.'),
+        'license_note':('MNNIT CC BY 4.0; cite DOI 10.17632/r3yjf35hzr.1. '
+                        + (f"RetailS: {retails_summary['license_note']}" if retails_summary.get('available') else '')),
         'metrics_path':str((OUT/'activity_metrics.json').relative_to(ROOT))})
     metrics={'model_comparison':comparison,'chosen_model':family,
              'selection_method':f'clip-grouped {CV_FOLDS}-fold CV repeated over seeds {list(CV_SEEDS)}, on the training split only',
@@ -713,13 +797,18 @@ def activity_training():
              'validation_clip_roc_auc':clip_auc,
              'eligible_clips':len(eligible),'excluded_clips':len(excluded),
              'exclusions_by_class_and_reason':exclusion_summary,'excluded_detail':excluded,
+             'mnnit_eligible_clips':len(mnnit_rows),'retails_summary':retails_summary,
              'class_counts':{s:{'normal':sum(1 for r in eligible if r['split']==s and r['label']==0),
                                 'shoplifting':sum(1 for r in eligible if r['split']==s and r['label']==1)}
                              for s in ('train','validation','test')},
              'validation_threshold_curve':curve,'selected_operating_point':selected,
              'validation_sustained_clip_rule':selected['sustained_clip_rule'],
+             'retails_track_level':selected.get('retails_track_level'),
              'test_split_untouched':True,
-             'limits':'Window level within single-person clips. No per-person or per-interval claim, and no evidence about when an act began.'}
+             'limits':('Window level within single-person MNNIT clips, or whole-track descriptors within '
+                       'RetailS tracks. No per-interval claim, and no evidence about when an act began. '
+                       'RetailS labels are per-person-track but the underlying frame ground truth is '
+                       'scene-wide, not verified per person by this project.')}
     OUT.mkdir(parents=True,exist_ok=True)
     (OUT/'activity_metrics.json').write_text(json.dumps(metrics,indent=2))
     card=snapshot_disclosure_evidence('activity')

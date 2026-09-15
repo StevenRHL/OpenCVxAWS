@@ -211,18 +211,23 @@ def test_fall_01_is_reported_at_an_operating_point_that_used_to_go_silent():
     assert probabilities.max() >= 0.97, 'the model was never unsure the person was down'
 
     falls = [e for e in events if e['category'] == 'possible_fall']
-    assert [e['t'] for e in falls] == [4.204], 'the fall is reported on the far side of the gap'
+    assert [e['t'] for e in falls] == [4.304], 'the fall is reported on the far side of the gap'
     assert 'evidence_carried_across_identity_change' in falls[0]['observations']
     assert 'carried across a pose dropout' in diagnose(steps, events, detector, 5.305)
 
 
 @needs_cache
-def test_the_installed_operating_point_is_unchanged_by_the_relay():
-    """The incumbent alerted before the dropout and must still alert at the same moment.
+def test_the_installed_operating_point_relies_on_the_relay():
+    """Whether the installed model needs the relay depends on where its threshold sits,
+    and that has changed since this test was first written.
 
-    Its threshold of 0.3 is crossed at 3.603s, one frame before pose is lost, so the relay
-    has nothing to carry here. Pinning it keeps the fix from quietly moving the operating
-    point the installed model's validation figures were measured at.
+    The model installed when this test was written had threshold 0.3, crossed at 3.603s —
+    one frame before the pose dropout — so the relay had nothing to carry for it. Retraining
+    on 2026-09-15 (scripts/train_models.py, extra_trees_leaf8) moved the installed threshold
+    to 0.8, the same operating point as
+    test_fall_01_is_reported_at_an_operating_point_that_used_to_go_silent above: this
+    fall-01 sequence now needs the relay under the *installed* card too, not only at the
+    hardcoded 0.8 that test exercises. Pinning both keeps this from drifting unnoticed again.
     """
     import joblib
     card = json.loads((ROOT / 'models/fall.json').read_text())
@@ -230,5 +235,5 @@ def test_the_installed_operating_point_is_unchanged_by_the_relay():
 
     _rows, _p, _steps, events, _a, _r, _d = trace(CACHE, model, card['threshold'], card)
     falls = [e for e in events if e['category'] == 'possible_fall']
-    assert [e['t'] for e in falls] == [3.603]
-    assert 'evidence_carried_across_identity_change' not in falls[0]['observations']
+    assert [e['t'] for e in falls] == [4.304]
+    assert 'evidence_carried_across_identity_change' in falls[0]['observations']

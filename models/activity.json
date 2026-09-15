@@ -1,8 +1,8 @@
 {
-  "run_id": "pilot-20260911T025806Z",
+  "run_id": "pilot-20260915T141825Z",
   "artifact": "activity.joblib",
-  "sha256": "9d06f7b213809c1df2b33b18bdd1480690091241ec63cd59229fbbf615e0497a",
-  "threshold": 0.613374886257275,
+  "sha256": "fcaef4da6918a5cef42daf86567e2008f614e533b5846750ac1e46217025fe0d",
+  "threshold": 0.5221003736131337,
   "with_mask": false,
   "n_features": 127,
   "feature_schema_version": 1,
@@ -276,351 +276,368 @@
     ],
     "reason": "validity-mask and pose-quality columns describe how well the person was seen, not what they did, and pose failure is class-correlated in this corpus"
   },
-  "model_family": "gradient_boosting_n300_d2_lr0.05",
+  "model_family": "random_forest",
   "model_comparison": {
     "logistic": {
       "cv": {
-        "mean_roc_auc": 0.7722341649713745,
-        "sd": 0.07411349752434863,
-        "min": 0.5977272727272728,
-        "max": 0.8434244791666667,
+        "mean_roc_auc": 0.6994644365738424,
+        "sd": 0.05010585684801721,
+        "min": 0.5816964285714286,
+        "max": 0.764908256880734,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8755597209205457,
-      "validation_window_average_precision": 0.8703828686022121
+      "validation_window_roc_auc": 0.7256130676358776,
+      "validation_window_average_precision": 0.6732333519684777
     },
     "gradient_boosting": {
       "cv": {
-        "mean_roc_auc": 0.7921067216144471,
-        "sd": 0.07307721941420571,
-        "min": 0.6454237288135594,
-        "max": 0.9065733414485696,
+        "mean_roc_auc": 0.7585079847970636,
+        "sd": 0.036464093186786534,
+        "min": 0.7110119047619048,
+        "max": 0.828134510042605,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8718108924294492,
-      "validation_window_average_precision": 0.8825057466447557
+      "validation_window_roc_auc": 0.7555875840748632,
+      "validation_window_average_precision": 0.7654909549820489
     },
     "random_forest": {
       "cv": {
-        "mean_roc_auc": 0.7822147818434902,
-        "sd": 0.08351780506887015,
-        "min": 0.6371473354231976,
-        "max": 0.9153175591531756,
+        "mean_roc_auc": 0.7651792466947313,
+        "sd": 0.04891131924636413,
+        "min": 0.6920745920745921,
+        "max": 0.8333333333333333,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8709778194314277,
-      "validation_window_average_precision": 0.8991466752968763
+      "validation_window_roc_auc": 0.7864185152692484,
+      "validation_window_average_precision": 0.7996726500796825
     },
     "logistic_c0.3": {
       "cv": {
-        "mean_roc_auc": 0.7807540349523937,
-        "sd": 0.0776072458313263,
-        "min": 0.6005681818181818,
-        "max": 0.8670705630791162,
+        "mean_roc_auc": 0.7026252731496382,
+        "sd": 0.049807475954202415,
+        "min": 0.5847470238095238,
+        "max": 0.7664893617021277,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8586899927106113,
-      "validation_window_average_precision": 0.8557635187450917
+      "validation_window_roc_auc": 0.7233571458411665,
+      "validation_window_average_precision": 0.6683265916204686
     },
     "logistic_c1": {
       "cv": {
-        "mean_roc_auc": 0.7722341649713745,
-        "sd": 0.07411349752434863,
-        "min": 0.5977272727272728,
-        "max": 0.8434244791666667,
+        "mean_roc_auc": 0.6994644365738424,
+        "sd": 0.05010585684801721,
+        "min": 0.5816964285714286,
+        "max": 0.764908256880734,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8755597209205457,
-      "validation_window_average_precision": 0.8703828686022121
+      "validation_window_roc_auc": 0.7256130676358776,
+      "validation_window_average_precision": 0.6732333519684777
     },
     "logistic_c3": {
       "cv": {
-        "mean_roc_auc": 0.7609115474678714,
-        "sd": 0.07104660157935852,
-        "min": 0.5934659090909091,
-        "max": 0.8432744978697504,
+        "mean_roc_auc": 0.6973301058456545,
+        "sd": 0.05032364567678669,
+        "min": 0.5821428571428572,
+        "max": 0.7665780141843971,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8850359262730397,
-      "validation_window_average_precision": 0.8788089293784972
+      "validation_window_roc_auc": 0.7260726072607261,
+      "validation_window_average_precision": 0.6761490051700845
     },
     "gradient_boosting_n100_d2_lr0.05": {
       "cv": {
-        "mean_roc_auc": 0.7817199087878511,
-        "sd": 0.08460639662211111,
-        "min": 0.6099791013584117,
-        "max": 0.910529519172246,
+        "mean_roc_auc": 0.7426340172608359,
+        "sd": 0.04194432924237424,
+        "min": 0.6732886904761906,
+        "max": 0.81253804017042,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8394251796313652,
-      "validation_window_average_precision": 0.8402251928382996
+      "validation_window_roc_auc": 0.7153152024063165,
+      "validation_window_average_precision": 0.729495578390414
     },
     "gradient_boosting_n100_d2_lr0.1": {
       "cv": {
-        "mean_roc_auc": 0.7897504439772582,
-        "sd": 0.07372749937692215,
-        "min": 0.6718913270637408,
-        "max": 0.9087795765877957,
+        "mean_roc_auc": 0.7532926827709682,
+        "sd": 0.03783430161101261,
+        "min": 0.7078869047619049,
+        "max": 0.8282866707242847,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8602520045819013,
-      "validation_window_average_precision": 0.8682992316603418
+      "validation_window_roc_auc": 0.7471487655094624,
+      "validation_window_average_precision": 0.7589790963846768
     },
     "gradient_boosting_n100_d3_lr0.05": {
       "cv": {
-        "mean_roc_auc": 0.7819787058968681,
-        "sd": 0.08447807367401736,
-        "min": 0.6408045977011494,
-        "max": 0.9227895392278953,
+        "mean_roc_auc": 0.7513635454504973,
+        "sd": 0.04117239797337056,
+        "min": 0.6873348873348873,
+        "max": 0.8151376146788991,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8588982609601167,
-      "validation_window_average_precision": 0.866607402261365
+      "validation_window_roc_auc": 0.7491540293269834,
+      "validation_window_average_precision": 0.7562358190584237
     },
     "gradient_boosting_n100_d3_lr0.1": {
       "cv": {
-        "mean_roc_auc": 0.7879636426947643,
-        "sd": 0.07357538279670106,
-        "min": 0.6664406779661016,
-        "max": 0.9103362391033624,
+        "mean_roc_auc": 0.7536035833547877,
+        "sd": 0.03972942659905631,
+        "min": 0.6896658896658896,
+        "max": 0.811613475177305,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.864000833072998,
-      "validation_window_average_precision": 0.8702310747430944
+      "validation_window_roc_auc": 0.7531645569620253,
+      "validation_window_average_precision": 0.7572867879606124
     },
     "gradient_boosting_n200_d2_lr0.05": {
       "cv": {
-        "mean_roc_auc": 0.7958399869910177,
-        "sd": 0.07289115884077225,
-        "min": 0.6784221525600836,
-        "max": 0.9184418746195983,
+        "mean_roc_auc": 0.7523233428224992,
+        "sd": 0.03726604501758631,
+        "min": 0.7082071843547991,
+        "max": 0.8285149117468046,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8600437363323961,
-      "validation_window_average_precision": 0.8661308524756028
+      "validation_window_roc_auc": 0.7391903747336759,
+      "validation_window_average_precision": 0.7554409722607546
     },
     "gradient_boosting_n200_d2_lr0.1": {
       "cv": {
-        "mean_roc_auc": 0.7921067216144471,
-        "sd": 0.07307721941420571,
-        "min": 0.6454237288135594,
-        "max": 0.9065733414485696,
+        "mean_roc_auc": 0.7585079847970636,
+        "sd": 0.036464093186786534,
+        "min": 0.7110119047619048,
+        "max": 0.828134510042605,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8718108924294492,
-      "validation_window_average_precision": 0.8825057466447557
+      "validation_window_roc_auc": 0.7555875840748632,
+      "validation_window_average_precision": 0.7654909549820489
     },
     "gradient_boosting_n200_d3_lr0.05": {
       "cv": {
-        "mean_roc_auc": 0.7877945408405345,
-        "sd": 0.0740677266806615,
-        "min": 0.6609195402298851,
-        "max": 0.9081569115815691,
+        "mean_roc_auc": 0.7582563465888926,
+        "sd": 0.04244085853868066,
+        "min": 0.6790209790209789,
+        "max": 0.8161138161898965,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8691034051858795,
-      "validation_window_average_precision": 0.8761520388775152
+      "validation_window_roc_auc": 0.7552951497681414,
+      "validation_window_average_precision": 0.7640676101258683
     },
     "gradient_boosting_n200_d3_lr0.1": {
       "cv": {
-        "mean_roc_auc": 0.7883649594554278,
-        "sd": 0.06993678604494154,
-        "min": 0.6501694915254238,
-        "max": 0.9034869240348692,
+        "mean_roc_auc": 0.7629567849173619,
+        "sd": 0.041247974426791886,
+        "min": 0.6995335897226086,
+        "max": 0.8226567255021302,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8641049671977508,
-      "validation_window_average_precision": 0.8764513970586105
+      "validation_window_roc_auc": 0.7511384049797385,
+      "validation_window_average_precision": 0.764556503585312
     },
     "gradient_boosting_n300_d2_lr0.05": {
       "cv": {
-        "mean_roc_auc": 0.7958628150197147,
-        "sd": 0.07079749648976638,
-        "min": 0.672542372881356,
-        "max": 0.9172245891661593,
+        "mean_roc_auc": 0.7551405737423711,
+        "sd": 0.035550015534300955,
+        "min": 0.7148351198756239,
+        "max": 0.8255477784540476,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8622305529522025,
-      "validation_window_average_precision": 0.8689540837962821
+      "validation_window_roc_auc": 0.7475874169695451,
+      "validation_window_average_precision": 0.7598677868200312
     },
     "gradient_boosting_n300_d2_lr0.1": {
       "cv": {
-        "mean_roc_auc": 0.7914353499288057,
-        "sd": 0.07187367856773999,
-        "min": 0.6383050847457626,
-        "max": 0.9059646987218504,
+        "mean_roc_auc": 0.7612885094854526,
+        "sd": 0.03635439452042402,
+        "min": 0.716860916860917,
+        "max": 0.8263085818624467,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8581693220868478,
-      "validation_window_average_precision": 0.867638050872309
+      "validation_window_roc_auc": 0.7483602790658813,
+      "validation_window_average_precision": 0.7584117439112523
     },
     "gradient_boosting_n300_d3_lr0.05": {
       "cv": {
-        "mean_roc_auc": 0.7924286759114403,
-        "sd": 0.07161665793288925,
-        "min": 0.671864406779661,
-        "max": 0.9056603773584906,
+        "mean_roc_auc": 0.7595616529015216,
+        "sd": 0.04146951980359299,
+        "min": 0.6826728826728826,
+        "max": 0.8148936170212767,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8709778194314276,
-      "validation_window_average_precision": 0.8742914259731818
+      "validation_window_roc_auc": 0.7556920248986925,
+      "validation_window_average_precision": 0.7676750512487442
     },
     "gradient_boosting_n300_d3_lr0.1": {
       "cv": {
-        "mean_roc_auc": 0.7894920592790141,
-        "sd": 0.07195743988079234,
-        "min": 0.6464406779661017,
-        "max": 0.9068776628119293,
+        "mean_roc_auc": 0.7628644324192452,
+        "sd": 0.04028196570256896,
+        "min": 0.6972804972804973,
+        "max": 0.8194613511868533,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8630636259502238,
-      "validation_window_average_precision": 0.8753519842593502
+      "validation_window_roc_auc": 0.7470234365208673,
+      "validation_window_average_precision": 0.7617186867197544
     },
     "random_forest_n200_leaf2": {
       "cv": {
-        "mean_roc_auc": 0.784656910443085,
-        "sd": 0.08025156529065268,
-        "min": 0.6483803552769071,
-        "max": 0.9240348692403487,
+        "mean_roc_auc": 0.7631368927208879,
+        "sd": 0.04874597316861954,
+        "min": 0.6756021756021756,
+        "max": 0.8437943262411347,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8887847547641362,
-      "validation_window_average_precision": 0.9152513828458295
+      "validation_window_roc_auc": 0.7927267410285332,
+      "validation_window_average_precision": 0.8055084490055396
     },
     "random_forest_n200_leaf5": {
       "cv": {
-        "mean_roc_auc": 0.7795721464891809,
-        "sd": 0.08575016305770244,
-        "min": 0.627742946708464,
-        "max": 0.9162515566625156,
+        "mean_roc_auc": 0.7629393622666022,
+        "sd": 0.04936871381007146,
+        "min": 0.6855477855477856,
+        "max": 0.8306737588652481,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8724356971779652,
-      "validation_window_average_precision": 0.9016007567787587
+      "validation_window_roc_auc": 0.7834106195429669,
+      "validation_window_average_precision": 0.8007070432387045
     },
     "random_forest_n200_leaf10": {
       "cv": {
-        "mean_roc_auc": 0.7703805229587692,
-        "sd": 0.08691171454934053,
-        "min": 0.6068443051201672,
-        "max": 0.910024906600249,
+        "mean_roc_auc": 0.7595731172538489,
+        "sd": 0.04917547721737177,
+        "min": 0.6855654761904763,
+        "max": 0.8259751773049646,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8379673018848277,
-      "validation_window_average_precision": 0.8646308974582819
+      "validation_window_roc_auc": 0.7694364373146176,
+      "validation_window_average_precision": 0.7781756931777996
     },
     "random_forest_n400_leaf2": {
       "cv": {
-        "mean_roc_auc": 0.7868289030726332,
-        "sd": 0.08086358269901155,
-        "min": 0.6596133751306165,
-        "max": 0.9296388542963885,
+        "mean_roc_auc": 0.7644291478593365,
+        "sd": 0.04688489051917508,
+        "min": 0.6796425796425796,
+        "max": 0.8342198581560284,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8820160366552119,
-      "validation_window_average_precision": 0.9095759462922157
+      "validation_window_roc_auc": 0.7989931904582862,
+      "validation_window_average_precision": 0.8117026732540213
     },
     "random_forest_n400_leaf5": {
       "cv": {
-        "mean_roc_auc": 0.7822147818434902,
-        "sd": 0.08351780506887015,
-        "min": 0.6371473354231976,
-        "max": 0.9153175591531756,
+        "mean_roc_auc": 0.7651792466947313,
+        "sd": 0.04891131924636413,
+        "min": 0.6920745920745921,
+        "max": 0.8333333333333333,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8709778194314277,
-      "validation_window_average_precision": 0.8991466752968763
+      "validation_window_roc_auc": 0.7864185152692484,
+      "validation_window_average_precision": 0.7996726500796825
     },
     "random_forest_n400_leaf10": {
       "cv": {
-        "mean_roc_auc": 0.77329919062062,
-        "sd": 0.08547432202657451,
-        "min": 0.6178160919540231,
-        "max": 0.9140722291407223,
+        "mean_roc_auc": 0.7605310990291616,
+        "sd": 0.049567015173128316,
+        "min": 0.6917637917637918,
+        "max": 0.8289755351681958,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8344267416432365,
-      "validation_window_average_precision": 0.8642214839830766
+      "validation_window_roc_auc": 0.7695408781384467,
+      "validation_window_average_precision": 0.7771353224186447
     },
     "random_forest_n600_leaf2": {
       "cv": {
-        "mean_roc_auc": 0.7862624671902082,
-        "sd": 0.0805223314868898,
-        "min": 0.6551724137931034,
-        "max": 0.9262141967621419,
+        "mean_roc_auc": 0.7644837907822668,
+        "sd": 0.046740430327243156,
+        "min": 0.6878010878010878,
+        "max": 0.8333333333333335,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8796209517859002,
-      "validation_window_average_precision": 0.9085154662296875
+      "validation_window_roc_auc": 0.799160295776413,
+      "validation_window_average_precision": 0.8100247750098157
     },
     "random_forest_n600_leaf5": {
       "cv": {
-        "mean_roc_auc": 0.7822098770502618,
-        "sd": 0.08402322724866787,
-        "min": 0.6345350052246604,
-        "max": 0.9215442092154421,
+        "mean_roc_auc": 0.7643700747576515,
+        "sd": 0.048143642278067764,
+        "min": 0.6926961926961928,
+        "max": 0.8314716312056737,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8672289909403311,
-      "validation_window_average_precision": 0.896474038361353
+      "validation_window_roc_auc": 0.7848727910765759,
+      "validation_window_average_precision": 0.798753153092548
     },
     "random_forest_n600_leaf10": {
       "cv": {
-        "mean_roc_auc": 0.7730428646433811,
-        "sd": 0.08500263601271964,
-        "min": 0.6225182863113897,
-        "max": 0.9187422166874222,
+        "mean_roc_auc": 0.7615025336086869,
+        "sd": 0.05103027333357096,
+        "min": 0.6924851190476191,
+        "max": 0.833868501529052,
         "folds": 15
       },
-      "validation_window_roc_auc": 0.8315109861501615,
-      "validation_window_average_precision": 0.8622738017721484
+      "validation_window_roc_auc": 0.768308476417262,
+      "validation_window_average_precision": 0.7755048991344915
     },
     "isolation_forest_normal_only": {
-      "validation_window_roc_auc": 0.44392377382068104,
-      "validation_window_average_precision": 0.5143000616569007,
+      "validation_window_roc_auc": 0.5203450724819316,
+      "validation_window_average_precision": 0.4688957966893659,
       "note": "Trained on normal windows only; needs no shoplifting labels. Measured at 0.37 ROC-AUC in the pilot \u2014 worse than chance \u2014 and kept only as a recorded negative result."
     }
   },
   "release_cleared": null,
   "threshold_selection": "out-of-fold clip-grouped scores on the training split, targeting 21% of ordinary windows flagged",
   "alert_rule": "the application requires 2 consecutive flagged windows; a single flagged window is not an alert",
-  "training_source": "MNNIT retail clips, MediaPipe pose features, fixed-length windows",
-  "label_scope": "scene level only \u2014 the clip label says a clip contains shoplifting, never who or when. Every window of a shoplifting clip inherits the clip label, so many positive windows contain no act at all.",
-  "eligibility": "single-person clips with pose coverage >= 0.5 and at least one full 5.0s window",
+  "sustained_windows": 2,
+  "training_source": "MNNIT retail clips (MediaPipe pose, scene-level clip labels, fixed-length windows) plus RetailS whole-track descriptors (upstream COCO17 pose, genuine per-person-track labels; see docs/DATASETS.md and scripts/prepare_retails.py)",
+  "label_scope": "MNNIT: scene level only \u2014 the clip label says a clip contains shoplifting, never who or when; every window of a shoplifting clip inherits the clip label. RetailS: genuine per-person-track labels (majority of that track's frame-level ground truth), but frame-level ground truth is itself scene-wide \u2014 a bystander in the same frame as a concealment inherits the positive frame label.",
+  "eligibility": "MNNIT: single-person clips with pose coverage >= 0.5 and at least one full 5.0s window. RetailS: any tracked person with >=3 usable feature rows, summarised as one whole-track descriptor (RetailS clips are mostly shorter than the 5.0s window; see scripts/prepare_retails.py).",
   "not_proof_of_theft": "Flags motion resembling clips labelled shoplifting. It does not establish theft and requires human review.",
-  "expected_false_alert_rate": 0.2,
+  "expected_false_alert_rate": 0.13333333333333333,
   "expected_detection_rate": 0.8125,
-  "alert_caveat": "In validation, 3 of 15 ordinary retail clips (20%) raised an activity alert under the two-consecutive-window rule. This is a clip fraction, not an hourly rate or the probability this alert is correct. Results cover eligible single-person clips; clip labels do not identify who acted or when. Movement does not establish theft. Performance on your camera is unknown.",
-  "license_note": "MNNIT CC BY 4.0; cite DOI 10.17632/r3yjf35hzr.1",
-  "metrics_path": "runs/pilot-20260911T025806Z/activity_metrics.json",
+  "alert_caveat": "In validation, 2 of 15 ordinary MNNIT retail clips (13%) raised an activity alert under the two-consecutive-window rule. This is a clip fraction, not an hourly rate or the probability this alert is correct. Results cover eligible single-person clips; clip labels do not identify who acted or when. Movement does not establish theft. Performance on your camera is unknown. See retails_track_level in the metrics file for the separate RetailS check, including a small genuine (non-staged) incident sample.",
+  "license_note": "MNNIT CC BY 4.0; cite DOI 10.17632/r3yjf35hzr.1. RetailS: No LICENSE file in the repository or archive as of the 2026-09-11 inspection; the README carries only a citation request. The project owner (Steven) reported on 2026-09-16 having contacted the paper's authors and received clearance to use the dataset for training; this script and the resulting artifact take that report at face value \u2014 no written license text or correspondence has been independently reviewed by this codebase, so it should not be treated as a citable license grant. Confirm the actual correspondence exists before any public distribution of a trained artifact (see docs/DECISIONS.md D050).",
+  "metrics_path": "runs/pilot-20260915T141825Z/activity_metrics.json",
   "disclosure_evidence": {
     "split": "validation",
-    "model_run_id": "pilot-20260911T025806Z",
-    "artifact_sha256": "9d06f7b213809c1df2b33b18bdd1480690091241ec63cd59229fbbf615e0497a",
-    "metrics_path": "runs/pilot-20260911T025806Z/activity_metrics.json",
-    "metrics_sha256": "9b44b1af850066c15961663a989695df44442adaf2efe801a6ef6cd152ec1728",
+    "model_run_id": "pilot-20260915T141825Z",
+    "artifact_sha256": "fcaef4da6918a5cef42daf86567e2008f614e533b5846750ac1e46217025fe0d",
+    "metrics_path": "runs/pilot-20260915T141825Z/activity_metrics.json",
+    "metrics_sha256": "6e4704b13681ddbc090501a03841bee9c6f394ba8f59b1fc9ece77bb639bfb3b",
     "operating_point": {
-      "threshold": 0.613374886257275,
+      "threshold": 0.5221003736131337,
       "provenance": "out_of_fold_training_scores",
-      "tp": 63,
-      "fp": 11,
-      "fn": 34,
-      "window_precision": 0.8513513513513513,
-      "window_recall": 0.6494845360824743,
-      "flagged_normal_window_fraction": 0.1111111111111111,
+      "tp": 102,
+      "fp": 22,
+      "fn": 100,
+      "window_precision": 0.8225806451612904,
+      "window_recall": 0.504950495049505,
+      "flagged_normal_window_fraction": 0.09282700421940929,
       "sustained_clip_rule": {
         "run_length": 2,
         "clips": 31,
         "shoplifting_clips_alerted": 13,
         "shoplifting_clips": 16,
-        "normal_clips_alerted": 3,
+        "normal_clips_alerted": 2,
         "normal_clips": 15,
         "clip_recall": 0.8125,
-        "normal_clip_alert_rate": 0.2
+        "normal_clip_alert_rate": 0.13333333333333333
+      },
+      "retails_track_level": {
+        "retails_realworld": {
+          "tracks": 56,
+          "shoplifting_tracks": 35,
+          "shoplifting_tracks_flagged": 10,
+          "normal_tracks": 21,
+          "normal_tracks_flagged": 2
+        },
+        "retails_staged": {
+          "tracks": 187,
+          "shoplifting_tracks": 70,
+          "shoplifting_tracks_flagged": 19,
+          "normal_tracks": 117,
+          "normal_tracks_flagged": 11
+        }
       },
       "target_normal_flag_rate": 0.21
     },
-    "verified_on": "2026-09-11",
+    "verified_on": "2026-09-15",
     "note": "Snapshotted automatically by train_models.py at training time."
   }
 }

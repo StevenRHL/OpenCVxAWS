@@ -1,8 +1,8 @@
 {
-  "run_id": "pilot-20260911T024220Z",
+  "run_id": "pilot-20260915T141825Z",
   "artifact": "fall.joblib",
-  "sha256": "2bbdecc476e4f9de3c94d316a87fb844cb601c8f7d0f1e4d68b06aa6cbf7304a",
-  "threshold": 0.3,
+  "sha256": "195f811689fb784fdf196a0c085c89db157627f0afe6fed90e0a6a69e40551c3",
+  "threshold": 0.8,
   "with_mask": true,
   "n_features": 24,
   "feature_schema_version": 1,
@@ -37,7 +37,7 @@
     "trailing_angle_range_over_90_valid",
     "joint_coverage_valid"
   ],
-  "model_family": "gradient_boosting_n200_d2_lr0.1",
+  "model_family": "extra_trees_leaf8",
   "model_comparison": {
     "logistic_c0.3": {
       "cv": {
@@ -203,6 +203,59 @@
       },
       "validation_roc_auc": 0.994624400147656,
       "validation_average_precision": 0.9863149372320739
+    },
+    "extra_trees_leaf2": {
+      "cv": {
+        "mean_roc_auc": 0.9691445286783337,
+        "sd": 0.050065658316928434,
+        "min": 0.8348507840161862,
+        "max": 1.0,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9873338870431894,
+      "validation_average_precision": 0.9626914719790644,
+      "event_swept_on_time_recall": 1.0,
+      "event_swept_false_alerts": 4
+    },
+    "extra_trees_leaf8": {
+      "cv": {
+        "mean_roc_auc": 0.9660984989443934,
+        "sd": 0.055214370975596117,
+        "min": 0.8190692969145169,
+        "max": 0.9998957953420519,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9828811369509044,
+      "validation_average_precision": 0.9473336830891352,
+      "event_shortlisted": true,
+      "event_swept_on_time_recall": 1.0,
+      "event_swept_false_alerts": 4
+    },
+    "hist_gradient_leaves7": {
+      "cv": {
+        "mean_roc_auc": 0.9712574180229351,
+        "sd": 0.03967882326654225,
+        "min": 0.8732338868561779,
+        "max": 0.9999999999999999,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9686461794019934,
+      "validation_average_precision": 0.9251316272117809,
+      "event_swept_on_time_recall": 1.0,
+      "event_swept_false_alerts": 5
+    },
+    "hist_gradient_leaves15": {
+      "cv": {
+        "mean_roc_auc": 0.9699456131986572,
+        "sd": 0.04245889387738308,
+        "min": 0.8627075710667043,
+        "max": 1.0,
+        "folds": 15
+      },
+      "validation_roc_auc": 0.9742063492063492,
+      "validation_average_precision": 0.9317823829404285,
+      "event_swept_on_time_recall": 1.0,
+      "event_swept_false_alerts": 5
     }
   },
   "down_hold_s": 2.0,
@@ -274,112 +327,35 @@
     "true_events": 6,
     "matched": 6,
     "on_time": 6,
-    "false_alerts": 5,
-    "precision": 0.5454545454545454,
-    "median_latency_s": 0.551
+    "false_alerts": 4,
+    "precision": 0.6,
+    "median_latency_s": 0.651
   },
-  "alert_caveat": "Re-measured on 14 September 2026 after a rule-layer change: in validation, 6 of 12 fall/person-down alerts did not match a labelled fall event; all 6 labelled falls were matched on time. On the held-out test split, 4 of 10 alerts did not match and all 6 labelled falls were matched on time. The operating point below was originally selected against 5 of 11 validation alerts, under a rule layer that could not carry fall evidence across a pose dropout; that change added one unmatched alert per split and missed nothing it previously caught. These are small samples used to select and check an operating point, not an independent test or a reliable hourly rate. Unmatched alerts do not establish that no person was down. Posture is not an injury diagnosis. Performance on your camera is unknown.",
-  "metrics_path": "runs/pilot-20260911T024220Z/fall_metrics.json",
+  "alert_caveat": "In validation, 4 of 10 fall/person-down alerts did not match a labelled fall event; all 6 labelled falls were matched on time. This is a small validation sample used to select the operating point, not an independent test or a reliable hourly rate. Unmatched alerts do not establish that no person was down. Posture is not an injury diagnosis. Performance on your camera is unknown.",
+  "metrics_path": "runs/pilot-20260915T141825Z/fall_metrics.json",
   "disclosure_evidence": {
     "split": "validation",
-    "model_run_id": "pilot-20260911T024220Z",
-    "artifact_sha256": "2bbdecc476e4f9de3c94d316a87fb844cb601c8f7d0f1e4d68b06aa6cbf7304a",
-    "metrics_path": "runs/pilot-20260911T024220Z/fall_metrics.json",
-    "metrics_sha256": "153de3e99f709a63a1cf6254698e33c5e272082b3c0edd65e9d7e9039663f85a",
+    "model_run_id": "pilot-20260915T141825Z",
+    "artifact_sha256": "195f811689fb784fdf196a0c085c89db157627f0afe6fed90e0a6a69e40551c3",
+    "metrics_path": "runs/pilot-20260915T141825Z/fall_metrics.json",
+    "metrics_sha256": "4e2f9ba144cadf6b2d71ad30fcff064d55f168b5781b700a63954abf76e065e5",
     "operating_point": {
-      "posture_threshold": 0.3,
+      "posture_threshold": 0.8,
       "fall_hold_s": 0.0,
       "down_hold_s": 2.0,
-      "true_events": 6,
-      "alerts": 11,
-      "matched": 6,
-      "on_time": 6,
-      "missed": 0,
-      "false_alerts": 5,
-      "recall": 1.0,
-      "on_time_recall": 1.0,
-      "precision": 0.5454545454545454,
-      "false_alerts_per_hour": 225.0478226623157,
-      "median_latency_s": 0.551
-    },
-    "verified_on": "2026-09-11",
-    "note": "Snapshotted automatically by train_models.py at training time.",
-    "superseded_by": "revalidation (2026-09-14): this snapshot records the operating point as selected at training time, under the rule layer in place then. It is kept unchanged as a historical record; the figures the application shows come from `revalidation`."
-  },
-  "rule_layer": {
-    "revision": "evidence-relay-20260914",
-    "change": "Unspent fall evidence is carried across the identity renumbering caused by a pose dropout, bounded by the detector transition_window and a proximity check. Before this, a fall whose landing fell on the far side of a dropout produced no possible_fall alert at all, and was reported only if the recording lasted long enough for the two-second person_down fallback.",
-    "thresholds_unchanged": true,
-    "model_artifact_unchanged": true,
-    "carried_alerts_are_labelled": "evidence_carried_across_identity_change"
-  },
-  "revalidation": {
-    "measured_on": "2026-09-14",
-    "reason": "The recorded validation figures were measured under the previous rule layer. Changing detection rules invalidates them, so they were re-measured at the same posture threshold, dwell constants and splits.",
-    "posture_threshold": 0.3,
-    "fall_hold_s": 0.0,
-    "down_hold_s": 2.0,
-    "validation": {
-      "true_events": 6,
-      "alerts": 12,
-      "matched": 6,
-      "on_time": 6,
-      "missed": 0,
-      "false_alerts": 6,
-      "precision": 0.5,
-      "recall": 1.0,
-      "median_latency_s": 0.551,
-      "previous": {
-        "alerts": 11,
-        "false_alerts": 5,
-        "matched": 6,
-        "missed": 0,
-        "precision": 0.5454545454545454
-      }
-    },
-    "test": {
       "true_events": 6,
       "alerts": 10,
       "matched": 6,
       "on_time": 6,
       "missed": 0,
       "false_alerts": 4,
-      "precision": 0.6,
       "recall": 1.0,
-      "median_latency_s": 0.601,
-      "previous": {
-        "alerts": 9,
-        "false_alerts": 3,
-        "matched": 6,
-        "missed": 0,
-        "precision": 0.6666666666666666
-      }
+      "on_time_recall": 1.0,
+      "precision": 0.6,
+      "false_alerts_per_hour": 180.03825812985255,
+      "median_latency_s": 0.651
     },
-    "whole_corpus_diagnostic": {
-      "note": "All 70 UR Fall sequences, including the training split. Not an accuracy claim \u2014 it is the only view in which this failure mode appears at all, because the held-out splits happen to contain no sequence that ends before the person_down fallback completes.",
-      "labelled_falls": 30,
-      "falls_with_no_alert_of_any_kind": {
-        "before": 3,
-        "after": 1,
-        "recovered": [
-          "fall-13",
-          "fall-19"
-        ],
-        "still_silent": [
-          "fall-25"
-        ]
-      },
-      "falls_reported_by_the_fast_possible_fall_path": {
-        "before": 27,
-        "after": 29
-      },
-      "adl_sequences": 40,
-      "alerts_on_adl_negatives": {
-        "before": 21,
-        "after": 23
-      },
-      "still_silent_cause": "fall-25 is a posture-scoring miss, not an evidence gap: the model never calls a frame down on it (peak 0.053 against a 0.3 threshold), so no rule path can start."
-    },
-    "trade": "Two labelled falls that previously produced no alert at all are now reported, at a cost of two additional alerts across 40 fall-negative sequences. Recall did not fall anywhere measured."
+    "verified_on": "2026-09-15",
+    "note": "Snapshotted automatically by train_models.py at training time."
   }
 }
