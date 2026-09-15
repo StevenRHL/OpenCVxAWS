@@ -88,60 +88,62 @@ with st.sidebar:
     pending_page = st.session_state.pop("navigate_to", None)
     if pending_page:
         st.session_state["page"] = pending_page
-    page = st.radio("Navigation", ["Dashboard", "Analyses", "Debugger", "Learning queue"], key="page", label_visibility="collapsed")
+    with st.container(key="review-navigation"):
+        page = st.radio("Navigation", ["Dashboard", "Analyses", "Debugger", "Learning queue"], key="page", label_visibility="collapsed", width="stretch")
     if page == "Dashboard":
         st.session_state["upload_view"] = False
     st.divider()
-    st.markdown("#### Analyse a video")
-    uploaded = st.file_uploader("Choose a video", type=["mp4", "mov", "avi", "mkv", "webm"], help="Your file stays on this computer. The decoder checks compatibility before analysis.")
-    with st.expander("Analysis settings"):
-        fps = st.select_slider("Analysis frames per second", options=[5, 10, 15, 20], value=10)
-        people = st.number_input("Maximum visible people", min_value=1, max_value=4, value=4)
-        variant = st.selectbox("Pose model", ["full", "lite"], format_func=lambda value: "Full · more detail" if value == "full" else "Lite · faster")
-        recording_start = st.text_input("Recording start date and time (optional)", placeholder="2026-09-11T14:30:00+10:00", help="Include the UTC offset. Leave blank if the recording date is unknown; analysis time will be labelled separately.")
-    all_jobs = jobs.list_jobs()
-    busy = any(job["status"] in {"running", "cancelling"} for job in all_jobs)
-    asset = ROOT / "models" / f"pose_landmarker_{variant}.task"
-    if uploaded is not None:
-        st.caption(f"{uploaded.size / 1024**2:.1f} MB · stored locally when analysis starts")
-    if not asset.exists():
-        st.caption(f"The {variant} pose asset is not installed, so analysis cannot start. "
-                   "Quit the app, double-click Setup WatchVerify.command (it downloads the asset "
-                   "and verifies it), then launch again.")
-    if st.button("Start analysis", type="primary", width="stretch", disabled=uploaded is None or busy or not asset.exists()):
-        temporary = None
-        try:
-            with tempfile.NamedTemporaryFile(suffix=Path(uploaded.name).suffix, delete=False) as handle:
-                temporary = Path(handle.name)
-                handle.write(uploaded.getbuffer())
-            identifier = jobs.create_job(temporary, {"analysis_fps": fps, "max_people": int(people),
-                                         "pose_variant": variant, "recording_start": recording_start.strip() or None},
-                                         original_name=uploaded.name)
-            jobs.launch_job(identifier)
-            st.session_state["selected_run"] = identifier
-            st.session_state["navigate_to"] = "Analyses"
-            st.rerun()
-        except (OSError, ValueError, RuntimeError) as error:
-            st.error(str(error))
-        finally:
-            if temporary is not None:
-                temporary.unlink(missing_ok=True)
-    examples = sorted((ROOT / "data" / "processed" / "urfall").glob("*.mp4"))
-    if examples:
-        with st.expander("Try a research sample"):
-            sample = st.selectbox("Sample recording", examples, format_func=lambda p: p.stem)
-            st.caption("Public research footage. Some samples may be used in model development; this is a demonstration, not an independent accuracy test.")
-            if st.button("Analyse sample", disabled=busy or not asset.exists()):
-                try:
-                    identifier = jobs.create_job(sample, {"analysis_fps": fps, "max_people": int(people), "pose_variant": variant}, original_name=f"Research sample · {sample.name}")
-                    jobs.launch_job(identifier)
-                    st.session_state["selected_run"] = identifier
-                    st.session_state["navigate_to"] = "Analyses"
-                    st.rerun()
-                except (OSError, ValueError, RuntimeError) as error:
-                    st.error(str(error))
-    if busy:
-        st.caption("One video is being analysed. You can review previous results while it runs.")
+    with st.expander("Analyse a video", expanded=page == "Analyses" and st.session_state.get("upload_view", False)):
+        st.markdown("#### Analyse a video")
+        uploaded = st.file_uploader("Choose a video", type=["mp4", "mov", "avi", "mkv", "webm"], help="Your file stays on this computer. The decoder checks compatibility before analysis.")
+        with st.expander("Analysis settings"):
+            fps = st.select_slider("Analysis frames per second", options=[5, 10, 15, 20], value=10)
+            people = st.number_input("Maximum visible people", min_value=1, max_value=4, value=4)
+            variant = st.selectbox("Pose model", ["full", "lite"], format_func=lambda value: "Full · more detail" if value == "full" else "Lite · faster")
+            recording_start = st.text_input("Recording start date and time (optional)", placeholder="2026-09-11T14:30:00+10:00", help="Include the UTC offset. Leave blank if the recording date is unknown; analysis time will be labelled separately.")
+        all_jobs = jobs.list_jobs()
+        busy = any(job["status"] in {"running", "cancelling"} for job in all_jobs)
+        asset = ROOT / "models" / f"pose_landmarker_{variant}.task"
+        if uploaded is not None:
+            st.caption(f"{uploaded.size / 1024**2:.1f} MB · stored locally when analysis starts")
+        if not asset.exists():
+            st.caption(f"The {variant} pose asset is not installed, so analysis cannot start. "
+                       "Quit the app, double-click Setup WatchVerify.command (it downloads the asset "
+                       "and verifies it), then launch again.")
+        if st.button("Start analysis", type="primary", width="stretch", disabled=uploaded is None or busy or not asset.exists()):
+            temporary = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=Path(uploaded.name).suffix, delete=False) as handle:
+                    temporary = Path(handle.name)
+                    handle.write(uploaded.getbuffer())
+                identifier = jobs.create_job(temporary, {"analysis_fps": fps, "max_people": int(people),
+                                             "pose_variant": variant, "recording_start": recording_start.strip() or None},
+                                             original_name=uploaded.name)
+                jobs.launch_job(identifier)
+                st.session_state["selected_run"] = identifier
+                st.session_state["navigate_to"] = "Analyses"
+                st.rerun()
+            except (OSError, ValueError, RuntimeError) as error:
+                st.error(str(error))
+            finally:
+                if temporary is not None:
+                    temporary.unlink(missing_ok=True)
+        examples = sorted((ROOT / "data" / "processed" / "urfall").glob("*.mp4"))
+        if examples:
+            with st.expander("Try a research sample"):
+                sample = st.selectbox("Sample recording", examples, format_func=lambda p: p.stem)
+                st.caption("Public research footage. Some samples may be used in model development; this is a demonstration, not an independent accuracy test.")
+                if st.button("Analyse sample", disabled=busy or not asset.exists()):
+                    try:
+                        identifier = jobs.create_job(sample, {"analysis_fps": fps, "max_people": int(people), "pose_variant": variant}, original_name=f"Research sample · {sample.name}")
+                        jobs.launch_job(identifier)
+                        st.session_state["selected_run"] = identifier
+                        st.session_state["navigate_to"] = "Analyses"
+                        st.rerun()
+                    except (OSError, ValueError, RuntimeError) as error:
+                        st.error(str(error))
+        if busy:
+            st.caption("One video is being analysed. You can review previous results while it runs.")
     st.divider()
     st.markdown("#### Your analyses")
     if all_jobs:
@@ -446,22 +448,35 @@ elif page == "Learning queue":
 elif selected and not show_upload:
     analysis_view(selected)
 else:
-    st.markdown('<div class="eyebrow">SEE THE MOMENT. REVIEW THE CONTEXT.</div>', unsafe_allow_html=True)
-    st.title("A clearer view of\nwhat needs attention.")
-    st.markdown('<p class="intro">Turn a video into a focused review of possible falls, people remaining down, and unusual movement—with the footage beside every observation.</p>', unsafe_allow_html=True)
-    st.write("")
-    for column, number, title, description in zip(st.columns(3), ["01", "02", "03"],
-            ["Choose a recording", "Follow the movement", "Review the evidence"],
-            ["Select a video in the sidebar. It stays on your computer, with its recording time kept separate from the analysis time.",
-             "Pose estimates and past-only movement features produce observations. Unreliable visibility remains a limitation.",
-             "Seek to an event, add your judgement, and download the annotated footage and event list."]):
-        with column:
-            st.markdown(f'<div class="step"><span>{number}</span><b>{title}</b><span>{description}</span></div>', unsafe_allow_html=True)
-    st.write("")
-    st.info("Start with a short, fixed-camera recording where people are clearly visible. This is an experimental prototype; its accuracy on your camera has not been established.")
-    with st.expander("What the first version looks for"):
-        st.write("**Possible fall:** a rapid posture change supported by a low or horizontal position.")
-        st.write("**Person remains down:** a sustained low or horizontal posture, including when the fall itself is outside the recording.")
-        st.write("**Unusual movement:** an experimental activity score when a trained model is available. Movement alone cannot establish theft or injury.")
-        st.write("**Escalation prompts:** when an observation is raised, the app asks you whether to call police or an ambulance, shows how often that alert fires on ordinary footage, and records your answer. It never contacts anyone itself.")
-        st.write("Camera input is a later stage. This interface currently analyses uploaded recordings.")
+    st.markdown('<div class="eyebrow">LOCAL VIDEO REVIEW</div>', unsafe_allow_html=True)
+    st.title("Analyse a video")
+    st.markdown("- **Upload** a short recording from the sidebar.\n"
+                "- **Find** possible falls, people remaining down, and unusual movement.\n"
+                "- **Review** flagged moments and download the results.")
+    st.caption("Experimental observations — check each alert against the footage.")
+    with st.expander("Read more"):
+        st.markdown("### How it works")
+        st.markdown("- **Choose your recording:** open **Analyse a video** in the sidebar, "
+                    "select a file, then press **Start analysis**. A short, fixed-camera clip "
+                    "with clearly visible people is a useful starting point.\n"
+                    "- **Keep the timing clear:** your file is processed locally. If you know "
+                    "the recording date and time, enter it with its UTC offset in Analysis "
+                    "settings. Otherwise it remains unknown, separate from the analysis time.\n"
+                    "- **Follow the observations:** body-pose estimates and movement over time "
+                    "produce timestamped flags. Missing or unclear body poses can cause missed "
+                    "or mistaken observations.\n"
+                    "- **Review and export:** open a flagged moment, inspect the footage, save "
+                    "your judgement and notes, then download available annotated video or event results.")
+        st.markdown("### What can be flagged")
+        st.markdown("- **Possible fall:** a rapid posture change supported by a low or horizontal position.\n"
+                    "- **Person remains down:** a sustained low or horizontal posture, including "
+                    "when the fall itself is outside the recording.\n"
+                    "- **Unusual movement:** an experimental activity score when a trained model "
+                    "is available. Movement alone does not establish theft or injury.")
+        st.markdown("### Decisions and limitations")
+        st.markdown("- **Human decisions:** police and medical prompts record your decision and "
+                    "show available model disclosures. The app contacts nobody.\n"
+                    "- **Detection limits:** accuracy on your camera has not been established. "
+                    "No alerts does not mean the footage is safe.\n"
+                    "- **Camera preview:** the separate Live camera page offers a preview. "
+                    "Saved analyses here use uploaded recordings.")

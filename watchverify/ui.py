@@ -89,6 +89,30 @@ div[data-testid="stDownloadButton"] > button p {{font-size:13.5px; margin:0}}
 [data-testid="stSidebar"] textarea {{background:{CHROME_BORDER}; color:{CHROME_TEXT}}}
 [data-testid="stSidebar"] [data-testid="stExpander"] {{border-color:{CHROME_BORDER}}}
 
+/* Large navigation tiles keep native radio keyboard and selection behavior. */
+.st-key-review-navigation {{padding-top:8px}}
+.st-key-review-navigation [data-testid="stRadio"],
+.st-key-review-navigation [role="radiogroup"],
+.st-key-review-navigation [role="radiogroup"] > div {{width:100%!important}}
+.st-key-review-navigation [role="radiogroup"] {{gap:10px}}
+.st-key-review-navigation label[data-baseweb="radio"] {{
+    display:flex; align-items:center; box-sizing:border-box; width:100%;
+    min-height:58px; margin:0; padding:14px 18px; border:1px solid #34464F;
+    border-radius:10px; background:#1B2A32; cursor:pointer;
+    transition:background .15s ease, border-color .15s ease}}
+.st-key-review-navigation label[data-baseweb="radio"] > div:first-child {{display:none}}
+.st-key-review-navigation label[data-baseweb="radio"] > div:last-child {{margin:0; padding:0}}
+.st-key-review-navigation label[data-baseweb="radio"] p {{font-size:16px!important; font-weight:600}}
+.st-key-review-navigation label[data-baseweb="radio"]:hover {{background:#293E48; border-color:#769188}}
+.st-key-review-navigation label[data-baseweb="radio"]:has(input:checked) {{
+    background:#17482F; border-color:#46D78A; box-shadow:inset 4px 0 0 #46D78A}}
+.st-key-review-navigation label[data-baseweb="radio"]:has(input:focus-visible) {{
+    outline:2px solid #A2F0C5; outline-offset:3px}}
+
+.st-key-metricrow [data-testid="stColumn"]:nth-child(2) [data-testid="stMetric"] {{border-left:4px solid #C54A4A; background:#FFF5F5}}
+.st-key-metricrow [data-testid="stColumn"]:nth-child(3) [data-testid="stMetric"] {{border-left:4px solid #C38B28; background:#FFFAF0}}
+.st-key-metricrow [data-testid="stColumn"]:nth-child(4) [data-testid="stMetric"] {{border-left:4px solid #39966A}}
+
 /* --- small components ---------------------------------------------------- */
 .tag {{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700;
     letter-spacing:.09em; text-transform:uppercase; padding:3px 9px 3px 8px; border-radius:999px;
@@ -112,8 +136,19 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(> div > [data-testid="stVert
 div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
     box-shadow:0 4px 16px rgba(21,28,26,.08); border-color:#C9D6CE}}
 
+/* Expandable rows are the primary disclosure control throughout the review desk. */
+[data-testid="stExpander"] {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:12px}}
+[data-testid="stExpander"] summary {{min-height:52px; padding:12px 16px; cursor:pointer}}
+[data-testid="stExpander"] summary:hover {{background:#EDF5F0; border-radius:12px}}
+[data-testid="stExpander"] summary:focus-visible {{outline:2px solid {ACCENT_TEXT}; outline-offset:2px}}
+[data-testid="stExpander"] summary p {{font-size:14px; line-height:1.5}}
+[data-testid="stSidebar"] [data-testid="stExpander"] {{background:{CHROME_BG}}}
+[data-testid="stSidebar"] [data-testid="stExpander"] summary:hover {{background:{CHROME_BORDER}}}
+
 /* --- responsive ---------------------------------------------------------- */
 [data-testid="stHorizontalBlock"] {{flex-wrap:wrap}}
+[data-testid="stColumn"] {{min-width:0}}
+[data-testid="stMainBlockContainer"] {{width:100%; min-width:0}}
 /* A row of buttons should stay a row until a phone, whatever its container width. */
 .st-key-decisionrow [data-testid="stColumn"] {{min-width:0 !important; flex:1 1 0 !important}}
 /* 1120px, not 1024: with the sidebar open a 1024 laptop left the video column 326px wide,

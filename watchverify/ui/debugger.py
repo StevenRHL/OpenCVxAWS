@@ -269,7 +269,7 @@ def debugger_view(timestamp, date_text):
     header, back = st.columns([4, 1], vertical_alignment='center')
     with back:
         if st.button('Back to dashboard', width='stretch', key='debugger-back'):
-            st.session_state['page'] = 'Dashboard'
+            st.session_state['navigate_to'] = 'Dashboard'
             st.rerun()
     with header:
         st.markdown('<div class="eyebrow">WHY THIS WAS FLAGGED</div>', unsafe_allow_html=True)
@@ -375,18 +375,19 @@ def debugger_view(timestamp, date_text):
         else:
             st.caption('No observation tags were saved for this event.')
         st.divider()
-        review_col, ignore_col, learn_col = st.columns(3)
-        with review_col:
-            with st.popover('Review', width='stretch'):
-                with st.form(f"debugger-review-{run_id}-{event_id}"):
-                    label = st.selectbox('Your review', list(REVIEW_LABELS),
-                                         index=list(REVIEW_LABELS).index(review.get('label', 'unreviewed')),
-                                         format_func=lambda value: REVIEW_LABELS[value])
-                    note = st.text_area('Notes (optional)', value=review.get('note', ''), max_chars=2000)
-                    if st.form_submit_button('Save review', width='stretch'):
-                        jobs.save_review(run_id, event_id, label, note)
-                        st.rerun()
-        with ignore_col:
-            _ignore_controls(run_id, event_id)
-        with learn_col:
-            _add_to_learning(run_id, event)
+        with st.expander('Review and learning actions'):
+            review_col, ignore_col, learn_col = st.columns(3)
+            with review_col:
+                with st.popover('Review', width='stretch'):
+                    with st.form(f"debugger-review-{run_id}-{event_id}"):
+                        label = st.selectbox('Your review', list(REVIEW_LABELS),
+                                             index=list(REVIEW_LABELS).index(review.get('label', 'unreviewed')),
+                                             format_func=lambda value: REVIEW_LABELS[value])
+                        note = st.text_area('Notes (optional)', value=review.get('note', ''), max_chars=2000)
+                        if st.form_submit_button('Save review', width='stretch'):
+                            jobs.save_review(run_id, event_id, label, note)
+                            st.rerun()
+            with ignore_col:
+                _ignore_controls(run_id, event_id)
+            with learn_col:
+                _add_to_learning(run_id, event)

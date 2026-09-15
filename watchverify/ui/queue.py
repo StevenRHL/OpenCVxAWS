@@ -58,7 +58,11 @@ def queue_view(timestamp):
         return
     for candidate in visible:
         job = jobs_by_run.get(candidate['run_id'], {})
-        with st.container(border=True):
+        summary = (f"{candidate['proposed_label'].capitalize()} · "
+                   f"{job.get('original_name', candidate['run_id'])} · "
+                   f"{timestamp(candidate['source_start_s'])}–{timestamp(candidate['source_end_s'])} · "
+                   f"{candidate['status'].replace('_', ' ')}")
+        with st.expander(summary):
             ok, reason = review.eligibility(candidate)
             left, right = st.columns([3, 1])
             with left:
