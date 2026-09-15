@@ -82,12 +82,18 @@ div[data-testid="stDownloadButton"] > button p {{font-size:13.5px; margin:0}}
 [data-testid="stSidebar"] hr {{margin:.75rem 0; border-color:{CHROME_BORDER}}}
 [data-testid="stSidebar"] label p {{font-size:13px}}
 [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {{font-size:11px; font-weight:700;
-    letter-spacing:.13em; color:{CHROME_MUTED}; margin-bottom:.1rem}}
+    letter-spacing:.13em; color:{CHROME_MUTED}; margin-bottom:.5rem}}
 [data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"],
 [data-testid="stSidebar"] [data-baseweb="select"] > div,
 [data-testid="stSidebar"] input,
 [data-testid="stSidebar"] textarea {{background:{CHROME_BORDER}; color:{CHROME_TEXT}}}
 [data-testid="stSidebar"] [data-testid="stExpander"] {{border-color:{CHROME_BORDER}}}
+/* Secondary buttons default to the light theme's button colors, which are unreadable on
+   this dark sidebar (light text on a near-white background). */
+[data-testid="stSidebar"] [data-testid="stBaseButton-secondary"] {{
+    background:{CHROME_BORDER}; color:{CHROME_TEXT}; border-color:{CHROME_BORDER}}}
+[data-testid="stSidebar"] [data-testid="stBaseButton-secondary"]:hover:not(:disabled) {{
+    background:#28383F; border-color:#28383F}}
 
 /* Large navigation tiles keep native radio keyboard and selection behavior. */
 .st-key-review-navigation {{padding-top:8px}}
