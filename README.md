@@ -1,5 +1,7 @@
 # WatchVerify — experimental video review
 
+[![CI](https://github.com/StevenRHL/OpenCVxAWS/actions/workflows/ci.yml/badge.svg)](https://github.com/StevenRHL/OpenCVxAWS/actions/workflows/ci.yml)
+
 The VSC folder is the current project; the JKO/opencv-ai-build copy is older. Planning,
 status and handoff notes are kept on the build machine and are not published here, so this
 file and `HOW TO RUN.txt` are what a checkout has.
