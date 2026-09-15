@@ -223,3 +223,26 @@ def test_available_cameras_reports_only_indices_that_actually_deliver(monkeypatc
     monkeypatch.setattr(live.cv2, 'VideoCapture', lambda index: captures[index])
     assert live.available_cameras(limit=3) == [0]
     assert all(capture.released for capture in captures.values())
+
+
+def test_failed_pose_startup_releases_camera(monkeypatch):
+    capture = install(monkeypatch, FakeCapture())
+    def fail(*args):
+        raise ImportError('pose dependency unavailable')
+    monkeypatch.setattr(live, 'PoseEstimator', fail)
+    with pytest.raises(ImportError):
+        with LiveSession():
+            pass
+    assert capture.released
+
+
+def test_pose_close_failure_still_releases_camera(monkeypatch):
+    capture = install(monkeypatch, FakeCapture())
+    session = LiveSession().__enter__()
+    def fail():
+        raise RuntimeError('close failed')
+    session.estimator.close = fail
+    with pytest.raises(RuntimeError):
+        session.close()
+    assert capture.released
+    session.close()

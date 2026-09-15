@@ -82,7 +82,10 @@ class LiveSession:
         self.capture = None
         self.estimator = None
         self.models = Models()
-        self.warnings: list[str] = []
+        self.warnings: list[str] = [
+            f"{name.capitalize()} model: {status}"
+            for name, status in self.models.status.items() if name not in self.models.loaded
+        ]
 
         self.tracker = Tracker()
         self.buffers = FeatureBuffer()
@@ -138,7 +141,12 @@ class LiveSession:
             raise RuntimeError(
                 f'Camera {self.camera} could not be opened. Another application may be using '
                 'it, or this app has not been given camera permission.')
-        self.estimator = PoseEstimator(self.pose_variant, self.max_people, self.analysis_width)
+        try:
+            self.estimator = PoseEstimator(self.pose_variant, self.max_people, self.analysis_width)
+        except BaseException:
+            # __exit__ is not called when __enter__ fails.
+            self.close()
+            raise
         self._started = time.perf_counter()
         return self
 
@@ -146,12 +154,14 @@ class LiveSession:
         self.close()
 
     def close(self) -> None:
-        if self.estimator is not None:
-            self.estimator.close()
-            self.estimator = None
-        if self.capture is not None:
-            self.capture.release()
-            self.capture = None
+        estimator, capture = self.estimator, self.capture
+        self.estimator = self.capture = None
+        try:
+            if estimator is not None:
+                estimator.close()
+        finally:
+            if capture is not None:
+                capture.release()
 
     @property
     def elapsed_s(self) -> float:

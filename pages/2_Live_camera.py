@@ -64,6 +64,11 @@ if stop.button("Stop camera", width="stretch", disabled=not running):
     st.session_state["live_running"] = False
     st.rerun()
 
+message = st.session_state.pop("live_message", None)
+if message:
+    level, text = message
+    getattr(st, level)(text)
+
 st.info("Preview only. Nothing here is saved, and nothing here reaches the admin dashboard. "
         "To raise an incident for review, analyse a recording on the main page.")
 
@@ -104,7 +109,7 @@ try:
             frame = session.read()
             if not frame["ok"]:
                 if frame["fatal"]:
-                    st.error(frame["message"])
+                    st.session_state["live_message"] = ("error", frame["message"])
                     break
                 continue
             picture.image(frame["frame"], channels="BGR", width="stretch")
@@ -122,8 +127,14 @@ try:
                                      + "\n\n".join(f"• {line}" for line in seen[-8:]))
         else:
             if st.session_state.get("live_running"):
-                st.info(f"The preview stopped automatically after {minutes} minute(s).")
+                st.session_state["live_message"] = (
+                    "info", f"The preview stopped automatically after {minutes} minute(s).")
                 st.session_state["live_running"] = False
-except (RuntimeError, ValueError, OSError, FileNotFoundError) as error:
-    st.session_state["live_running"] = False
-    st.error(str(error))
+except Exception as error:
+    # Includes dependency imports and OpenCV errors; Streamlit rerun/stop signals
+    # inherit BaseException and must still propagate normally.
+    st.session_state["live_message"] = ("error", f"Camera preview stopped: {error}")
+
+# Re-render controls after EOF, timeout or failure so Start is immediately usable.
+st.session_state["live_running"] = False
+st.rerun()

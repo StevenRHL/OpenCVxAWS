@@ -41,7 +41,7 @@ def test_dashboard_default_filters_and_exact_event_navigation(tmp_path, monkeypa
     assert app.selectbox(key='debugger-event-urgent').value == 'urgent-event'
     next(s for s in app.selectbox if s.label=='Your review').set_value('relevant')
     next(b for b in app.button if b.label=='Save review').click().run()
-    app.radio(key='page').set_value('Dashboard').run()
+    app.button(key='debugger-back').click().run()
     assert not app.exception
     assert next(m for m in app.metric if m.label=='Urgent awaiting review').value == '0'
     reopened = AppTest.from_file(str(PAGE)).run()
