@@ -19,11 +19,12 @@ ROOT = Path(__file__).resolve().parent
 st.set_page_config(page_title="WatchVerify · Video review", page_icon="◉", layout="wide")
 ui.style()
 st.markdown("""<style>
-.intro {font-size:18px;color:#587164;max-width:780px;line-height:1.6}
-.quiet {color:#687e71;font-size:14px}
-.step {background:white;border:1px solid #dde7df;border-radius:16px;padding:22px;min-height:175px}
+.intro {font-size:18px;color:#5C6D64;max-width:780px;line-height:1.6}
+.step {background:#FFFFFF;border:1px solid #E2E8E5;border-radius:16px;padding:22px;min-height:175px}
 .step b {display:block;margin:12px 0 8px;font-size:17px}
-.step span {color:#687e71;font-size:14px;line-height:1.6}
+.step span {color:#5C6D64;font-size:14px;line-height:1.6}
+.step span:first-child {font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;
+    color:#147A45;font-weight:700}
 @media (max-width:860px) {.step {min-height:0}}
 </style>""", unsafe_allow_html=True)
 

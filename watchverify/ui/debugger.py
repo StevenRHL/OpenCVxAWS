@@ -13,7 +13,7 @@ import uuid
 
 import streamlit as st
 
-from watchverify import jobs, review
+from watchverify import jobs, review, ui
 from watchverify.alerts import ALERT_BRANCH
 from watchverify.dashboard import CATEGORIES, REVIEW_LABELS
 
@@ -311,9 +311,9 @@ def debugger_view(timestamp, date_text):
     branch = ALERT_BRANCH.get(event.get('category'))
 
     st.markdown(f"### {_label(event)} · {job.get('original_name', run_id)}")
-    urgency = ':red-badge[Urgent]' if event.get('category') in {'possible_fall', 'person_down'} else ':orange-badge[Review]'
-    review_badge = f":gray-badge[{REVIEW_LABELS.get(review['label'], review['label'])}]"
-    st.markdown(f"{urgency} · Video {timestamp(event.get('source_start_s'))} · {review_badge}")
+    urgency = ui.tag('urgent', 'Urgent') if event.get('category') in {'possible_fall', 'person_down'} else ui.tag('review', 'Review')
+    review_badge = ui.tag('info', REVIEW_LABELS.get(review['label'], review['label']))
+    st.markdown(f"{urgency} · Video {timestamp(event.get('source_start_s'))} · {review_badge}", unsafe_allow_html=True)
 
     left, right = st.columns([1.7, 1], gap='large')
     with left:

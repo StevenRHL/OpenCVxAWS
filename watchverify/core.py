@@ -9,7 +9,39 @@ from datetime import datetime, timedelta, timezone
 import math
 
 import numpy as np
-from scipy.optimize import linear_sum_assignment
+
+
+def _load_linear_sum_assignment():
+    """`scipy.optimize.linear_sum_assignment`, worked around when scipy's Fortran
+    extensions won't load.
+
+    scipy.optimize's package `__init__` eagerly imports every solver it ships, including
+    several built from Fortran (COBYLA, PROPACK, ...). On a machine where those fail to
+    `dlopen` -- seen on very new macOS, where a Mach-O TLS-section check newer dyld
+    enforces isn't satisfied by older gfortran output -- the whole package becomes
+    unimportable even though `linear_sum_assignment` itself is a plain C/Cython extension
+    with no Fortran dependency. Load that one compiled module directly, bypassing the
+    broken package `__init__`, only when the normal import path fails.
+    """
+    try:
+        from scipy.optimize import linear_sum_assignment
+        return linear_sum_assignment
+    except ImportError:
+        import glob
+        import importlib.util
+        import os
+        import scipy
+
+        candidates = glob.glob(os.path.join(os.path.dirname(scipy.__file__), "optimize", "_lsap*"))
+        if not candidates:
+            raise
+        spec = importlib.util.spec_from_file_location("_lsap", candidates[0])
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.linear_sum_assignment
+
+
+linear_sum_assignment = _load_linear_sum_assignment()
 
 JOINTS = (11, 12, 13, 14, 15, 16, 23, 24, 25, 26, 27, 28)
 REQUIRED = (11, 12, 23, 24)

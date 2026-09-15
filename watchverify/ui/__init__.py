@@ -15,3 +15,4 @@ style = _legacy.style
 timestamp = _legacy.timestamp
 date_text = _legacy.date_text
 facts = _legacy.facts
+tag = _legacy.tag

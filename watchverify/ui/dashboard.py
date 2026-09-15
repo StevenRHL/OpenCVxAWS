@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 import streamlit as st
 
+from watchverify import ui
 from watchverify.dashboard import (build_snapshot, date_text, filter_updates, PRIORITIES, REVIEW_LABELS)
 from watchverify.ui.debugger import open_debugger
 
@@ -22,8 +23,7 @@ def open_upload():
 
 
 def badge(key):
-    colours = {'urgent': 'red', 'review': 'orange', 'system': 'orange', 'info': 'gray'}
-    return f":{colours[key]}-badge[{PRIORITIES[key]}]"
+    return ui.tag(key, PRIORITIES[key])
 
 
 def event_context(row, tz, timestamp):
@@ -43,7 +43,7 @@ def row_view(row, tz, timestamp, key, *, stacked=False):
         body, action = ((st.container(), st.container()) if stacked else
                         st.columns([4, 1], vertical_alignment='center'))
         with body:
-            st.markdown(badge(row['priority']) + ' **' + row['title'] + '**')
+            st.markdown(badge(row['priority']) + ' **' + row['title'] + '**', unsafe_allow_html=True)
             prefix = 'First alert recorded' if row['kind'] == 'Observation' else 'Update recorded'
             st.caption(f"{prefix} · {date_text(row.get('at'), tz)}")
             if row.get('event'):

@@ -27,11 +27,22 @@ import streamlit as st
 
 # Matches .streamlit/config.toml. Kept in both places because the config is read by the
 # server before any Python here runs, and CSS cannot reach it.
-BACKGROUND = "#F7F9F7"
+BACKGROUND = "#F4F6F5"
 SURFACE = "#FFFFFF"
-BORDER = "#E0E8E2"
-MUTED = "#6A7F72"
-INK = "#182B24"
+BORDER = "#E2E8E5"
+MUTED = "#5C6D64"
+INK = "#151C1A"
+
+# Dark chrome (sidebar) and accent, custom-applied via CSS below rather than through
+# .streamlit/config.toml: the config's secondaryBackgroundColor also colours ordinary
+# widgets (inputs, checkboxes, code blocks) across the whole app, not just the sidebar.
+ACCENT = "#1FCB6B"
+ACCENT_TEXT = "#147A45"  # accent hue dark enough for text/borders on a light surface
+CHROME_BG = "#111B21"
+CHROME_TEXT = "#E7EFEA"
+CHROME_MUTED = "#7E9186"
+CHROME_BORDER = "#1E2B31"
+MONO = '"SFMono-Regular", Consolas, "Liberation Mono", monospace'
 
 CSS = f"""<style>
 /* --- page frame ---------------------------------------------------------- */
@@ -46,45 +57,60 @@ html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
 h1 {{letter-spacing:-.05em; font-weight:650!important; margin-bottom:.2rem}}
 h2, h3 {{letter-spacing:-.025em}}
 h4 {{letter-spacing:-.02em; margin:0 0 .6rem}}
-.eyebrow {{font-size:11px; font-weight:700; letter-spacing:.16em; color:#537261;
+.eyebrow {{font-size:11px; font-weight:700; letter-spacing:.16em; color:{ACCENT_TEXT};
     margin-bottom:.3rem}}
 
 /* --- controls ------------------------------------------------------------ */
 /* Equal height and no mid-word wrapping ("Call ambula/nce"). Equal *width* comes from
    width="stretch" on the widget itself; CSS cannot win that one against Streamlit. */
 div[data-testid="stButton"] > button,
-div[data-testid="stDownloadButton"] > button {{height:44px; white-space:nowrap; padding:0 10px}}
+div[data-testid="stDownloadButton"] > button {{height:44px; white-space:nowrap; padding:0 10px;
+    border-radius:8px}}
 div[data-testid="stButton"] > button p,
 div[data-testid="stDownloadButton"] > button p {{font-size:13.5px; margin:0}}
 
-[data-testid="stMetric"] {{background:{SURFACE}; border:1px solid {BORDER}; border-radius:12px;
-    padding:12px 14px}}
-[data-testid="stMetricValue"] {{font-size:26px}}
-[data-testid="stMetricLabel"] p {{font-size:12px; color:{MUTED}}}
+[data-testid="stMetric"] {{background:{SURFACE}; border:1px solid {BORDER}; border-left:3px solid {BORDER};
+    border-radius:14px; padding:12px 14px}}
+[data-testid="stMetricValue"] {{font-size:26px; font-family:{MONO}}}
+[data-testid="stMetricLabel"] p {{font-size:11px; font-weight:700; letter-spacing:.08em;
+    text-transform:uppercase; color:{MUTED}}}
 
-/* --- sidebar ------------------------------------------------------------- */
-/* The default block gap plus divider margins left a hand's width of nothing between
-   every control. */
-[data-testid="stSidebar"] {{border-right:1px solid #DCE5DE}}
+/* --- sidebar: dark chrome, HackerRank-style nav rail -------------------- */
+[data-testid="stSidebar"] {{background:{CHROME_BG}; border-right:1px solid {CHROME_BORDER}}}
+[data-testid="stSidebar"] * {{color:{CHROME_TEXT}}}
 [data-testid="stSidebar"] [data-testid="stVerticalBlock"] {{gap:.5rem}}
-[data-testid="stSidebar"] hr {{margin:.75rem 0}}
+[data-testid="stSidebar"] hr {{margin:.75rem 0; border-color:{CHROME_BORDER}}}
 [data-testid="stSidebar"] label p {{font-size:13px}}
 [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p {{font-size:11px; font-weight:700;
-    letter-spacing:.13em; color:{MUTED}; margin-bottom:.1rem}}
+    letter-spacing:.13em; color:{CHROME_MUTED}; margin-bottom:.1rem}}
+[data-testid="stSidebar"] [data-testid="stFileUploaderDropzone"],
+[data-testid="stSidebar"] [data-baseweb="select"] > div,
+[data-testid="stSidebar"] input,
+[data-testid="stSidebar"] textarea {{background:{CHROME_BORDER}; color:{CHROME_TEXT}}}
+[data-testid="stSidebar"] [data-testid="stExpander"] {{border-color:{CHROME_BORDER}}}
 
 /* --- small components ---------------------------------------------------- */
-.tag {{display:inline-block; font-size:11px; font-weight:700; letter-spacing:.09em;
-    padding:3px 9px; border-radius:999px; margin-bottom:.5rem}}
-.tag-med {{background:#FDECEC; color:#A32B2B; border:1px solid #F3C9C9}}
-.tag-sec {{background:#EEF2FD; color:#33468F; border:1px solid #CCD6F5}}
-.facts {{border:1px solid {BORDER}; border-radius:12px; background:{SURFACE}; padding:4px 14px;
+.tag {{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700;
+    letter-spacing:.09em; text-transform:uppercase; padding:3px 9px 3px 8px; border-radius:999px;
+    margin-bottom:.5rem}}
+.tag-urgent {{background:#FDECEC; color:#A32B2B; border:1px solid #F3C9C9}}
+.tag-review {{background:#FDF3E2; color:#8A5A12; border:1px solid #F2DDB3}}
+.tag-system {{background:#FDF3E2; color:#8A5A12; border:1px solid #F2DDB3}}
+.tag-info {{background:#EEF1F0; color:{MUTED}; border:1px solid {BORDER}}}
+.facts {{border:1px solid {BORDER}; border-radius:14px; background:{SURFACE}; padding:4px 14px;
     margin-bottom:.9rem}}
 .facts div {{display:flex; justify-content:space-between; gap:16px; padding:7px 0;
     font-size:13.5px; border-bottom:1px solid #F0F4F1}}
 .facts div:last-child {{border-bottom:none}}
 .facts span:first-child {{color:{MUTED}}}
-.facts span:last-child {{color:#1E2A23; font-weight:550; text-align:right}}
-.seen {{font-size:13.5px; color:#2C3B33; margin:.1rem 0 .2rem}}
+.facts span:last-child {{color:{INK}; font-weight:550; text-align:right; font-family:{MONO}}}
+.seen {{font-size:13.5px; color:{INK}; margin:.1rem 0 .2rem}}
+
+/* --- row cards: hover like a HackerRank submissions/problem list --------- */
+div[data-testid="stVerticalBlockBorderWrapper"]:has(> div > [data-testid="stVerticalBlock"]) {{
+    border-radius:14px; transition:box-shadow .15s ease, border-color .15s ease}}
+div[data-testid="stVerticalBlockBorderWrapper"]:hover {{
+    box-shadow:0 4px 16px rgba(21,28,26,.08); border-color:#C9D6CE}}
 
 /* --- responsive ---------------------------------------------------------- */
 [data-testid="stHorizontalBlock"] {{flex-wrap:wrap}}
@@ -135,6 +161,20 @@ def date_text(value) -> str:
             sep=" ", timespec="seconds")
     except (TypeError, ValueError):
         return str(value)
+
+
+_TAG_GLYPH = {"urgent": "▲", "review": "●", "system": "■", "info": "○"}
+
+
+def tag(kind: str, label: str) -> str:
+    """An urgency/status pill: `<span class="tag tag-{kind}">glyph label</span>`.
+
+    Each kind keeps a distinct leading glyph, not just a colour — `review` and `system`
+    share an amber colour family, so the glyph is what tells them apart without relying
+    on colour alone (docs/UI_PLAN.md §1).
+    """
+    glyph = _TAG_GLYPH.get(kind, "●")
+    return f'<span class="tag tag-{kind}">{glyph} {label}</span>'
 
 
 def facts(pairs) -> None:
