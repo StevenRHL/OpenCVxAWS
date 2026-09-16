@@ -9,6 +9,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
@@ -19,7 +20,39 @@ jobs:
           cache-dependency-path: requirements-lock.txt
 
       - name: Install dependencies
-        run: pip install -r requirements-lock.txt
+        run: |
+          set -o pipefail
+          pip install -r requirements-lock.txt 2>&1 | tee install.log
+
+      - name: Check for dependency conflicts
+        run: pip check 2>&1 | tee pipcheck.log
 
       - name: Run tests
-        run: python -m pytest -v
+        run: |
+          set -o pipefail
+          python -m pytest -v -rs 2>&1 | tee pytest.log
+
+      - name: Summarize failure
+        if: failure()
+        run: |
+          {
+            echo "## CI failure diagnosis"
+            if [ -s pytest.log ] && grep -qE "FAILED|ERROR|Interrupted" pytest.log; then
+              echo "**Classification:** test failure"
+              echo '```'
+              tail -n 30 pytest.log
+              echo '```'
+            elif [ -s pipcheck.log ] && [ -s pipcheck.log ] && grep -q "." pipcheck.log && ! grep -q "No broken requirements" pipcheck.log; then
+              echo "**Classification:** dependency conflict (pip check)"
+              echo '```'
+              cat pipcheck.log
+              echo '```'
+            elif [ -s install.log ] && grep -qE "ResolutionImpossible|ERROR" install.log; then
+              echo "**Classification:** dependency conflict (resolver)"
+              echo '```'
+              tail -n 30 install.log
+              echo '```'
+            else
+              echo "**Classification:** unknown — likely a timeout or infrastructure failure"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
