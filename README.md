@@ -78,7 +78,9 @@ corpus is present. The app accepts files; live-camera inference is a later miles
 
 70 UR Fall sequences and 179 MNNIT clips have been prepared according to the recorded
 release report. Source inventories and use restrictions are in `data/manifests/`.
-RetailS remains archived; full PoseLift/UCF acquisition is unfinished.
+RetailS is acquired, licensed for training use (clearance from the paper's authors reported
+2026-09-16, `docs/DECISIONS.md` D050), and wired into the activity model alongside MNNIT
+(`scripts/prepare_retails.py`, `docs/DATASETS.md`); full PoseLift/UCF acquisition is unfinished.
 
 ## Why the new models were not installed
 
